@@ -1,73 +1,60 @@
-\chapter{Methods\markboth{Methods}{}}
+\chapter{Methods}
 
-% Subfigure Example
-\begin{figure}[h!]
-\centering
-    \captionsetup[subfigure]{justification=centering}
-    \begin{subfigure}[b]{0.24\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/sample.png}
-        \caption{loremipsum1}
-        \label{fig:loremipsum1}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.24\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/sample.png}
-        \caption{loremipsum2}
-        \label{fig:loremipsum2}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.24\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/sample.png}
-        \caption{loremipsum3}
-        \label{fig:loremipsum3}
-    \end{subfigure}
-    \begin{subfigure}[b]{0.24\linewidth}
-        \centering
-        \includegraphics[width=\textwidth]{images/sample.png}
-        \caption{loremipsum4}
-        \label{fig:loremipsum4}
-    \end{subfigure}
-    \caption{Lorem Ipsum}    \label{fig:datasamples}
-\end{figure}
+\section{Study Cohort and Data Acquisition}
 
-% Table with column width control
-\begin{table}[ht!]\renewcommand\arraystretch{1.4}
-    \centering
-    \begin{tabular}{p{0.2\textwidth}p{0.45\textwidth}p{0.25\textwidth}}
-    \toprule
-         \textbf{Lorem} & \textbf{Ipsum} & \textbf{Dolor} \\
-         \midrule
-         Lorem1 & Lorem ipsum dolor sit amet, consectetur adipiscing elit. & \cite{reference}\\ 
-         Lorem2 & Integer sollicitudin, mi et congue tincidunt, dolor eros iaculis risus. & \cite{reference}\\
-         \bottomrule
-    \end{tabular}
-    \caption{Lorem Ipsum Dolor.}
-    \label{tab:lorem_ipsum}
-\end{table}
+\section{Quality-Control Framework}
 
-% Algorithm
-\providecommand{\SetAlgoLined}{\SetLine}
-\providecommand{\DontPrintSemicolon}{\dontprintsemicolon}
-\begin{algorithm}[h!]
-\setstretch{1.35}
-\SetAlgoLined
-\SetArgSty{textup}
-\DontPrintSemicolon
+\section{Real-Time Implementation and Scanner Simulation}
 
-\KwData{Lorem $\mathtt{lorem}$, Ipsum $\mathtt{ipsum}$, Dolor $\mathtt{dolor}$}
-\KwOut{Lorem Ipsum Dolor}
-\Begin{
-    \Return $\mathtt{lorem[ipsum, :, :] * dolor).sum()}$
-}
-\caption{Lorem Ipsum Dolor Algorithm}\label{algorithm:lorem}
-\end{algorithm}
+\section{HERON Pipeline}
+
+\subsection{Overview of the HERON Framework}
+
+\subsection{Relation to the Proposed QC Pipeline}
 
 
+\section{3D Quality-Control Pipeline}
+
+\subsection{Initial 3D Development}
+
+\subsection{Brain Localization Using nnU-Net}
+
+\subsection{Brain Crop Generation}
+
+\subsection{Intensity Normalization}
+
+\subsection{3D Artifact Classification}
+
+\subsection{Dynamic-Level Quality Decision}
 
 
+\section{2D Quality-Control Pipeline}
+
+\subsection{Construction of the 2D Slice Dataset}
+
+\subsection{Slice Selection}
+
+\subsection{Weak Slice-Label Generation}
+
+\subsection{Subject-Level Dataset Splitting}
+
+\subsection{2D Fetal Brain Segmentation}
+
+\subsection{Brain Crop Generation}
+
+\subsection{Slice-Level Artifact Classification}
+
+\subsection{Slice-to-Dynamic Aggregation}
+
+\subsection{Dynamic-Level Quality Decision}
 
 
+\section{Evaluation Methodology}
 
+\subsection{Segmentation Metrics}
 
+\subsection{Classification Metrics}
 
+\subsection{Runtime Evaluation}
+
+\subsection{2D and 3D Comparison}

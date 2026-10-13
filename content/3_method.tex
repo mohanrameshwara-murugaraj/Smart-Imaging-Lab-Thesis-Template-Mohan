@@ -16,6 +16,14 @@ The available MRI volumes and their corresponding reference masks formed the bas
 
 \subsection{Three-Dimensional MRI and Reference Mask Preparation}
 
+The initial three-dimensional experiments were conducted using complete fetal diffusion MRI volumes and their corresponding reference brain segmentation masks. Each MRI dynamic was associated with a three-dimensional binary mask delineating the fetal brain from the surrounding maternal and fetal tissues. The reference masks were initially generated through automated segmentation and subsequently manually corrected. These paired images and masks were used to develop the volumetric brain segmentation models, allowing the anatomical localization of the fetal brain directly from the acquired diffusion MRI data.
+
+Before segmentation training, the MRI volumes and reference masks were paired according to their case and dynamic identifiers. The spatial dimensions of each image--mask pair were checked to ensure correspondence between the MRI intensities and the reference segmentation. The masks were prepared as binary segmentation targets, distinguishing background voxels (0) from fetal brain voxels (1). Unlike the later two-dimensional approach, the original volumetric representation was retained to allow the segmentation models to process spatial information across adjacent image slices.
+
+For the initial custom 3D U-Net experiments, the paired volumes were loaded and prepared as three-dimensional tensors. Non-finite intensity values were replaced, and the image intensities were scaled relative to the maximum value of each volume. The volumes were subsequently padded to spatial dimensions divisible by eight to accommodate the successive downsampling operations of the network. The corresponding reference masks underwent the same spatial padding to maintain alignment with their MRI volumes. This preprocessing provided consistently shaped image--mask pairs for volumetric segmentation training.
+
+The subsequent nnU-Net experiments also used paired three-dimensional MRI volumes and reference brain masks. The data were prepared according to the nnU-Net dataset specification, in which each MRI dynamic was treated as an individual segmentation case with a corresponding binary reference label. The nnU-Net framework was then used to determine the preprocessing and network configuration for volumetric segmentation.
+
 \subsection{Volume Normalization and Spatial Preprocessing}
 
 \subsection{Preparation of Three-Dimensional Segmentation Inputs}

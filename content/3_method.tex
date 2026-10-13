@@ -36,6 +36,14 @@ For the nnU-Net experiments, the three-dimensional MRI volumes and corresponding
 
 \subsection{Preparation of Three-Dimensional Segmentation Inputs}
 
+For the initial three-dimensional segmentation experiments, the preprocessed MRI volumes and their corresponding reference brain masks were prepared as paired inputs and segmentation targets. Each MRI dynamic was treated as an individual volumetric sample, with the MRI intensity values forming the input and the binary brain mask providing voxel-wise supervision. The custom 3D U-Net used single-channel MRI volumes, with an additional channel dimension introduced to represent the data in the format required for three-dimensional convolutional operations. The corresponding segmentation masks were prepared with matching spatial dimensions to enable voxel-wise comparison between predicted and reference segmentations.
+
+For the custom 3D U-Net experiments, the available MRI--mask pairs were randomly divided into training and validation subsets using an 80:20 ratio and a fixed random seed of 42. The partitioning was performed at the dynamic level, rather than grouping all acquisitions from the same subject. Consequently, different dynamics belonging to the same subject could be included in both subsets.
+
+For the subsequent nnU-Net experiments, the three-dimensional MRI volumes and reference masks were converted into the dataset representation required by the framework. Each dynamic was assigned a unique case identifier, and the corresponding image and segmentation mask were paired using this identifier. The MRI data were defined as a single imaging channel, while the segmentation targets contained two classes: background (0) and fetal brain (1). A dataset description was generated to specify the imaging modality, segmentation classes, and available training and test cases.
+
+The nnU-Net dataset preparation used a randomized dynamic-level partition with a fixed seed of 42. The conversion script allocated 600 image--mask pairs to the training dataset, with the remaining available pairs assigned to the test dataset. The prepared dataset was then used for the subsequent three-dimensional nnU-Net segmentation experiments.
+
 \section{Initial Three-Dimensional Approaches}
 
 \subsection{Custom 3D U-Net Segmentation}

@@ -119,7 +119,8 @@
 \addtokomafont{pagefoot}{\normalfont}
 \ofoot*{\thepage}                       % page number
 \automark{chapter}                     % update running header at every numbered chapter
-\ohead*{\headmark}                     % current chapter, not a stale front-matter title
+\renewcommand*{\chaptermarkformat}{}    % suppress chapter numbers in running headers only
+\ohead*{\headmark}                     % chapter title without chapter number
 
 
 % ##################################################

@@ -66,7 +66,19 @@ The extracted features were combined into a five-dimensional feature vector for 
 
 The initial Random Forest experiment was conducted using a small set of extracted feature vectors. Four feature records were available in the documented experiment, of which three were assigned to training and one to testing. This preliminary implementation was intended to investigate whether basic intensity and crop-size characteristics could distinguish artifact-corrupted dynamics from good acquisitions.
 
-\subsection{nnU-Net and 3D CNN Classification}
+\subsection{nnU-Net Segmentation and 3D CNN Classification}
+
+Following the initial three-dimensional experiments, a second volumetric approach was developed by combining nnU-Net-based fetal brain segmentation with a three-dimensional convolutional neural network (3D CNN) for artifact classification. The framework consisted of two consecutive stages: automatic localization of the fetal brain within each diffusion MRI dynamic and classification of the extracted brain region according to its image quality.
+
+Fetal brain segmentation was performed using nnU-Net v2 with the three-dimensional full-resolution (\texttt{3d\_fullres}) configuration. The reported network configuration followed a six-stage encoder--decoder architecture with feature channels of 32, 64, 128, 256, 320, and 320. Convolutional operations were combined with instance normalization and leaky rectified linear unit (LeakyReLU) activations. During inference, each three-dimensional MRI dynamic was processed independently using the trained segmentation model from fold 0. The resulting segmentation mask identified the fetal brain region within the original MRI volume.
+
+The predicted brain mask was subsequently used to extract a three-dimensional region of interest from the original image. A bounding box was calculated from the spatial coordinates of all foreground voxels and extended by two voxels along each dimension, within the image boundaries. The extracted brain-centered volume was normalized using the 1st and 99th intensity percentiles. Intensity values outside this range were clipped, and the remaining values were linearly scaled to the interval $[0,1]$. The normalized region was then converted into a single-channel volumetric tensor for artifact classification.
+
+The artifact classifier employed a custom three-dimensional residual convolutional neural network. An initial $3 \times 3 \times 3$ convolution transformed the single-channel input into 32 feature channels, followed by batch normalization and ReLU activation. Three residual stages progressively increased the feature channels to 64, 128, and 256 while reducing the spatial dimensions through strided convolutions. Each residual block contained two $3 \times 3 \times 3$ convolutions with batch normalization, together with a residual connection. Where the input and output dimensions differed, a $1 \times 1 \times 1$ convolution was used to match the residual pathway to the transformed features.
+
+Following the residual stages, adaptive average pooling reduced the spatial feature maps to a fixed-length representation. The resulting 256-dimensional feature vector was passed through a fully connected layer with 128 units, a ReLU activation, and dropout with a probability of 0.5. A final fully connected layer produced two output scores corresponding to the Good and Artifact classes. Softmax was applied to obtain class probabilities, and the class with the highest probability was selected as the predicted quality label for the dynamic.
+
+The segmentation and classification stages were integrated into a sequential inference procedure, allowing each three-dimensional diffusion MRI dynamic to be processed from brain localization to artifact prediction. The implementation also included handling of unsuccessful brain localization, although the response to an empty predicted segmentation differed between archived versions of the pipeline.
 
 \section{Data Preparation for Two-Dimensional Analysis}
 

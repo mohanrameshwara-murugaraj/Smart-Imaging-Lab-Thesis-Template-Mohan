@@ -118,7 +118,8 @@
 % \addtokomafont{pagehead}{\normalfont}   % use normal font for page header
 \addtokomafont{pagefoot}{\normalfont}
 \ofoot*{\thepage}                       % page number
-\ohead*{\leftmark}                      % chapter name
+\automark{chapter}                     % update running header at every numbered chapter
+\ohead*{\headmark}                     % current chapter, not a stale front-matter title
 
 
 % ##################################################

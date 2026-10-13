@@ -48,6 +48,14 @@ The nnU-Net dataset preparation used a randomized dynamic-level partition with a
 
 \subsection{Custom 3D U-Net Segmentation}
 
+The initial approach to fetal brain localization employed a custom three-dimensional U-Net architecture to segment the fetal brain directly from the diffusion MRI volumes. The network followed an encoder--decoder structure with skip connections, allowing the extraction of volumetric image features at different spatial resolutions while retaining anatomical information required for voxel-wise segmentation. The model received single-channel three-dimensional MRI volumes and generated corresponding binary brain segmentation predictions.
+
+The encoder consisted of three downsampling stages with 16, 32, and 64 feature channels, followed by a bottleneck containing 128 feature channels. Each stage contained two successive $3 \times 3 \times 3$ convolutions, followed by batch normalization and rectified linear unit (ReLU) activation. Spatial downsampling was performed using $2 \times 2 \times 2$ max-pooling operations. The decoder progressively restored the spatial resolution through three transposed-convolution upsampling stages, with feature channels reduced from 128 to 64, 32, and 16. Skip connections concatenated the encoder features with the corresponding decoder features to retain spatial information during reconstruction. A final $1 \times 1 \times 1$ convolution followed by a sigmoid activation produced voxel-wise probabilities indicating the predicted fetal brain region.
+
+The network was trained using the Adam optimizer with a learning rate of $1 \times 10^{-4}$, a batch size of one, and 25 training epochs. The implemented objective combined binary cross-entropy (BCE) with a Dice-based loss term to assess the correspondence between predicted and reference brain masks. However, the Dice component was calculated after applying a probability threshold of 0.5 to the network output. Consequently, this component did not provide a differentiable gradient during optimization, and the effective gradient-based learning was driven by binary cross-entropy. Training performance was monitored using the average loss and Dice similarity coefficient calculated across the training volumes.
+
+Following training, the network generated voxel-wise probability maps that were converted into binary brain masks using a threshold of 0.5. These predicted masks were used to identify the fetal brain region within the original three-dimensional MRI volumes, providing the basis for subsequent volumetric region-of-interest extraction and artifact classification experiments.
+
 \subsection{Feature Extraction and Random Forest Classification}
 
 \subsection{nnU-Net and 3D CNN Classification}

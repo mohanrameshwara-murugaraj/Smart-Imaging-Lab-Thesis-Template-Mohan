@@ -16,6 +16,12 @@ The available MRI volumes and their corresponding reference masks formed the bas
 
 \subsection{Conversion of Three-Dimensional MRI Volumes into Two-Dimensional Slices}
 
+The original fetal diffusion MRI data consisted of three-dimensional image volumes, with each dynamic accompanied by a corresponding reference brain segmentation mask. For the development of the two-dimensional segmentation and artifact classification framework, these volumes were converted into individual two-dimensional slices. Each MRI dynamic and its corresponding brain mask were processed along the same spatial axis, preserving the anatomical correspondence between the extracted images and reference segmentations.
+
+The MRI volumes were loaded in NIfTI format using NiBabel. The through-plane dimension was identified from the volume dimensions, using an expected slice count of 36 where applicable. If this dimension could not be uniquely identified, the smallest spatial dimension was selected as the slicing axis, provided that it was unambiguous. Individual slices were extracted in their original order and stored as 32-bit floating-point arrays, retaining the MRI intensity information. The corresponding brain masks were extracted using the same slice indices and converted into binary representations, with foreground values indicating the fetal brain and background values indicating the surrounding regions.
+
+This process transformed each three-dimensional MRI dynamic into a sequence of two-dimensional images with corresponding reference brain masks. The original subject, dynamic, and slice associations were retained to support subsequent segmentation training and dynamic-level quality assessment. Further preprocessing, including image normalization, resizing, and selection of relevant slices, was performed according to the requirements of the segmentation and classification models and is described in the following subsections.
+
 \subsection{Image Normalization and Resizing}
 
 \subsection{Artifact Labeling and Slice Selection}

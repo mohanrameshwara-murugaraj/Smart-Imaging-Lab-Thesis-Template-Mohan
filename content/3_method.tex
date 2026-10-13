@@ -26,6 +26,14 @@ The subsequent nnU-Net experiments also used paired three-dimensional MRI volume
 
 \subsection{Volume Normalization and Spatial Preprocessing}
 
+The three-dimensional MRI volumes underwent intensity normalization and spatial preprocessing to prepare the data for volumetric brain segmentation. Separate preprocessing procedures were employed for the initial custom 3D U-Net and the subsequent nnU-Net experiments, reflecting the input requirements of the respective architectures.
+
+For the custom 3D U-Net, non-finite intensity values were replaced with zeros before normalization. Each MRI volume was converted to 32-bit floating-point precision, and its intensity values were divided by the maximum voxel intensity when this value was positive. This scaling reduced differences in the overall intensity magnitude between acquisitions while retaining the relative intensity distribution within each volume. The corresponding brain masks were represented as binary segmentation targets, distinguishing fetal brain tissue from the background.
+
+The MRI volumes and reference masks were subsequently padded along their spatial dimensions to obtain sizes divisible by eight. Padding was applied at the upper end of each dimension, with zero-valued voxels introduced where necessary. The same spatial padding was applied to the MRI and its corresponding mask to preserve anatomical alignment. This ensured compatibility with the three successive downsampling operations of the custom 3D U-Net without requiring spatial resizing of the original images.
+
+For the nnU-Net experiments, the three-dimensional MRI volumes and corresponding binary masks were processed using the framework's automated preprocessing procedure. The reported \texttt{3d\_fullres} configuration used a target voxel spacing of $3 \times 3 \times 3$\,mm$^3$ and a patch size of $40 \times 160 \times 160$ voxels. In contrast to the manually configured preprocessing of the custom 3D U-Net, nnU-Net determines its normalization and spatial preprocessing procedures through dataset-specific planning, using the image properties and network configuration to prepare the training inputs.
+
 \subsection{Preparation of Three-Dimensional Segmentation Inputs}
 
 \section{Initial Three-Dimensional Approaches}

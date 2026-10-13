@@ -1,60 +1,73 @@
-\chapter{Methods}
+\chapter{Materials and Methods}
 
-\section{Study Cohort and Data Acquisition}
+% Chapter introduction and section text will be added after the outline is approved.
 
-\section{Quality-Control Framework}
+\section{MRI Dataset and Data Acquisition}
 
-\section{Real-Time Implementation and Scanner Simulation}
+\section{Data Preparation and Preprocessing}
 
-\section{HERON Pipeline}
+\subsection{MRI Volume Organization and Slice Extraction}
 
-\subsection{Overview of the HERON Framework}
+\subsection{Image Normalization and Brain-Mask Preparation}
 
-\subsection{Relation to the Proposed QC Pipeline}
+\subsection{Artifact Labeling and Weak-Label Construction}
 
+\subsection{Subject-Level Training, Validation and Test Split}
 
-\section{3D Quality-Control Pipeline}
+\section{Initial Three-Dimensional Approaches}
 
-\subsection{Initial 3D Development}
+\subsection{Custom 3D U-Net Segmentation}
 
-\subsection{Brain Localization Using nnU-Net}
+\subsection{Feature Extraction and Random Forest Classification}
 
-\subsection{Brain Crop Generation}
+\subsection{nnU-Net and 3D CNN Classification}
 
-\subsection{Intensity Normalization}
+\section{Two-Dimensional Fetal Brain Segmentation}
 
-\subsection{3D Artifact Classification}
+\subsection{Network Architecture}
 
-\subsection{Dynamic-Level Quality Decision}
+\subsection{Network Training}
 
+\subsection{Segmentation Inference}
 
-\section{2D Quality-Control Pipeline}
+\section{Brain Region-of-Interest Extraction}
 
-\subsection{Construction of the 2D Slice Dataset}
+\subsection{Brain Bounding-Box Extraction and Cropping}
 
-\subsection{Slice Selection}
+\subsection{Oracle and Predicted Mask-Based Crops}
 
-\subsection{Weak Slice-Label Generation}
+\section{Artifact Classification}
 
-\subsection{Subject-Level Dataset Splitting}
+\subsection{EfficientNet-B0 Network Architecture}
 
-\subsection{2D Fetal Brain Segmentation}
+\subsection{Classification Dataset and Training}
 
-\subsection{Brain Crop Generation}
+\subsection{Inference and Artifact Probability Estimation}
 
-\subsection{Slice-Level Artifact Classification}
+\section{Dynamic-Level Quality Assessment}
 
-\subsection{Slice-to-Dynamic Aggregation}
+\subsection{Slice-Probability Aggregation}
 
-\subsection{Dynamic-Level Quality Decision}
+\subsection{Classification Thresholds}
 
+\subsection{Segmentation Failure Handling}
 
-\section{Evaluation Methodology}
+\section{Sequential Quality-Control Implementation}
 
-\subsection{Segmentation Metrics}
+\subsection{Sequential Processing Workflow}
 
-\subsection{Classification Metrics}
+\subsection{Early Stopping and Quality Decisions}
 
-\subsection{Runtime Evaluation}
+\subsection{Computational Latency Measurement}
 
-\subsection{2D and 3D Comparison}
+\section{Experimental Evaluation}
+
+\subsection{Segmentation Evaluation}
+
+\subsection{Artifact Classification Evaluation}
+
+\subsection{Oracle Versus Predicted Cropping Comparison}
+
+\subsection{Dynamic-Level and 2D Versus 3D Comparison}
+
+\subsection{Hardware and Software Environment}

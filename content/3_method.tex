@@ -10,9 +10,25 @@ The acquired diffusion MRI data were organized into individual three-dimensional
 
 The accompanying quality annotation table contained 38 case records, each comprising 22 dynamic-level quality annotations, resulting in 836 annotated dynamics. The dataset included additional information on gestational age and fetal pathology where available. Gestational age values were recorded for 22 cases, ranging numerically from 30.14 to 39.28 in the supplied annotation table. Each dynamic was assigned a quality label indicating whether the acquisition was considered good (0), artifact-corrupted (1), or uncertain ($-1$). Of the 836 annotations, 655 were labeled as good, 115 as artifact-corrupted, and 66 as uncertain. The uncertain annotations were excluded from binary artifact classification, leaving 770 dynamics with known quality labels in the annotation table.
 
-The available MRI volumes and their corresponding reference masks formed the basis for the initial three-dimensional experiments and the subsequent two-dimensional processing framework. For the later two-dimensional experiments, a cohort of 24 subject folders was used, comprising 16 training, four validation, and four test subjects. The imaging data were further prepared into individual slices while retaining their original subject and dynamic associations. The procedures used for image preprocessing, slice extraction, quality-label preparation, and dataset partitioning are described in Section~\ref{sec:data-preparation}.
+The available MRI volumes and their corresponding reference masks formed the basis for the initial three-dimensional experiments and the subsequent two-dimensional processing framework. For the later two-dimensional experiments, a cohort of 24 subject folders was used, comprising 16 training, four validation, and four test subjects. The imaging data were further prepared into individual slices while retaining their original subject and dynamic associations. The preparation of the volumetric data and the subsequent two-dimensional dataset is described in the following sections.
 
-\section{Data Preparation and Preprocessing}\label{sec:data-preparation}
+\section{Data Preparation for Three-Dimensional Analysis}\label{sec:data-preparation}
+
+\subsection{Three-Dimensional MRI and Reference Mask Preparation}
+
+\subsection{Volume Normalization and Spatial Preprocessing}
+
+\subsection{Preparation of Three-Dimensional Segmentation Inputs}
+
+\section{Initial Three-Dimensional Approaches}
+
+\subsection{Custom 3D U-Net Segmentation}
+
+\subsection{Feature Extraction and Random Forest Classification}
+
+\subsection{nnU-Net and 3D CNN Classification}
+
+\section{Data Preparation for Two-Dimensional Analysis}
 
 \subsection{Conversion of Three-Dimensional MRI Volumes into Two-Dimensional Slices}
 
@@ -27,14 +43,6 @@ This process transformed each three-dimensional MRI dynamic into a sequence of t
 \subsection{Artifact Labeling and Slice Selection}
 
 \subsection{Dataset Partitioning}
-
-\section{Initial Three-Dimensional Approaches}
-
-\subsection{Custom 3D U-Net Segmentation}
-
-\subsection{Feature Extraction and Random Forest Classification}
-
-\subsection{nnU-Net and 3D CNN Classification}
 
 \section{Two-Dimensional Fetal Brain Segmentation}
 

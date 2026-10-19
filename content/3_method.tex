@@ -201,7 +201,7 @@ m_x=\left\lceil0.15w\right\rceil.
 \end{equation}
 The bounding box was expanded in both dimensions by these margins. A square crop was then constructed around the expanded box center, with side length equal to the larger expanded dimension. Coordinates falling outside the original slice were handled by extracting the available pixels and zero-padding the remainder of the square.
 
-The resulting intensity crop underwent the normalization operation implemented in the crop-generation procedure, followed by bilinear resizing to $224\times224$ pixels (\texttt{align\_corners=False}). The resulting single-channel floating-point representation was provided to the artifact classifier. A mask without foreground pixels did not yield a valid bounding box and was recorded as an unsuccessful localization rather than replaced by an arbitrary crop.
+The resulting intensity crop underwent the normalization operation implemented in the crop-generation procedure, followed by bilinear resizing to $224\times224$ pixels (align\_corners=False). The resulting single-channel floating-point representation was provided to the artifact classifier. A mask without foreground pixels did not yield a valid bounding box and was recorded as an unsuccessful localization rather than replaced by an arbitrary crop.
 
 \subsection{Oracle and Predicted Mask-Based Crops}
 
@@ -217,7 +217,7 @@ The original slice identity, dynamic identifier, and subject identity were retai
 
 Artifact classification was performed using EfficientNet-B0, a compact convolutional neural network adapted for two-class prediction from brain-centered fetal diffusion MRI slices. The model accepted a single grayscale crop of $224\times224$ pixels. The input images were represented as floating-point arrays, with nonfinite values replaced and intensity values constrained to $[0,1]$ before model inference.
 
-The implementation used the EfficientNet-B0 feature extractor from \texttt{torchvision}. Where pretrained initialization was requested, the ImageNet-1K pretrained weights were loaded. The first convolution was replaced with a one-channel convolution of otherwise matching configuration; its initial weights were obtained by averaging the pretrained RGB filters across their input-channel dimension. The remaining feature-extraction layers were retained, while the final classifier linear layer was replaced by a layer with two outputs.
+The implementation used the EfficientNet-B0 feature extractor from torchvision. Where pretrained initialization was requested, the ImageNet-1K pretrained weights were loaded. The first convolution was replaced with a one-channel convolution of otherwise matching configuration; its initial weights were obtained by averaging the pretrained RGB filters across their input-channel dimension. The remaining feature-extraction layers were retained, while the final classifier linear layer was replaced by a layer with two outputs.
 
 The model produced logits for the Good (class 0) and Artifact (class 1) categories. A softmax operation converted these logits to class probabilities, and the artifact probability was taken from the class-1 output. The classifier therefore estimated image-quality evidence from the localized brain crop rather than from a complete three-dimensional dynamic.
 
@@ -244,7 +244,7 @@ The continuous artifact probability was retained for subsequent thresholding and
 
 \subsection{Slice-Probability Aggregation}
 
-Because quality annotations and prospective quality-control decisions refer to complete diffusion MRI dynamics, slice-level artifact probabilities were examined as inputs to dynamic-level aggregation. For a dynamic with $n$ successfully classified slices, the probabilities were denoted by $p_1,\ldots,p_n$. The evaluation considered the arithmetic mean, median, maximum, and aggregation variants labeled \texttt{top2}, \texttt{top3}, and \texttt{top5}.
+Because quality annotations and prospective quality-control decisions refer to complete diffusion MRI dynamics, slice-level artifact probabilities were examined as inputs to dynamic-level aggregation. For a dynamic with $n$ successfully classified slices, the probabilities were denoted by $p_1,\ldots,p_n$. The evaluation considered the arithmetic mean, median, maximum, and aggregation variants labeled {top2}, \texttt{top3}, and \texttt{top5}.
 
 For example, the mean and maximum scores can be written as
 \begin{equation}

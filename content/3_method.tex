@@ -102,6 +102,14 @@ For artifact classification, brain-centered regions of interest were extracted f
 
 \subsection{Artifact Labeling and Slice Selection}
 
+The original fetal diffusion MRI dataset contained image-quality annotations assigned at the dynamic level, indicating whether each three-dimensional acquisition was considered good (0), artifact-corrupted (1), or uncertain ($-1$). For the two-dimensional artifact classification framework, these annotations were associated with the extracted image slices using their corresponding subject and dynamic identifiers. Dynamics with uncertain quality annotations were excluded from binary classification, leaving only acquisitions with known good or artifact labels.
+
+The selection of slices for artifact classification was based on the anatomical extent of the fetal brain and a predefined slice range. Brain presence was determined using the corresponding reference segmentation masks. For each dynamic, the number of foreground pixels was calculated for every slice and expressed relative to the maximum brain-mask area observed within that dynamic. Slices with insufficient brain content were identified and excluded from the classification dataset. In addition, the classification analysis was restricted to slice indices 8--25, inclusive, to concentrate on a consistent range of brain-containing image sections.
+
+Since the original artifact annotations described the quality of complete MRI dynamics rather than individual slices, weak supervision was employed to construct slice-level classification targets. Each eligible slice inherited the binary quality label of its corresponding dynamic. Thus, slices extracted from good dynamics were labeled as good, whereas eligible slices from artifact-corrupted dynamics were labeled as artifact. These inherited labels were used as training targets for the two-dimensional classifier without assuming that the artifact was necessarily visible in every selected slice.
+
+The resulting classification dataset comprised 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. These labels represented the quality of the source dynamics and were therefore treated as weak slice-level annotations rather than independently verified spatial artifact labels.
+
 \subsection{Dataset Partitioning}
 
 \section{Two-Dimensional Fetal Brain Segmentation}

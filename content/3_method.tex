@@ -112,6 +112,14 @@ The resulting classification dataset comprised 6,078 training slices, 1,506 vali
 
 \subsection{Dataset Partitioning}
 
+The two-dimensional fetal diffusion MRI dataset was partitioned into training, validation, and test subsets at the subject level. Since each subject contributed multiple diffusion MRI dynamics and each dynamic contained several image slices, subject-level partitioning was applied to prevent images from the same subject appearing in different subsets. This separation reduced the risk of data leakage caused by anatomical similarities and dependencies between repeated acquisitions from the same subject.
+
+The dataset was divided using a two-stage stratified random splitting procedure, with a target allocation of 70\% for training, 15\% for validation, and 15\% for testing. Stratification was based on whether a subject contained at least one artifact-labeled slice, allowing the distribution of subjects with artifact-corrupted acquisitions to be considered during partitioning. A fixed random seed of 42 was specified to support reproducibility. The resulting experimental cohort comprised 24 subject groups, with 16 allocated to training, four to validation, and four to testing. All dynamics and corresponding slices belonging to the same subject group retained the same partition assignment.
+
+For brain segmentation, the training dataset contained 9,264 prepared slices, including 8,099 slices with reference brain regions and 1,165 without brain regions. The validation and test datasets each contained 3,168 slices, of which 2,028 and 1,902 contained brain regions, respectively. Brain-containing slices were retained for segmentation training, while a subset of slices without foreground brain masks was included to represent background-only images. The validation and test sets retained both brain-containing and background-only slices for evaluation.
+
+For artifact classification, an additional selection procedure restricted the data to brain-containing slices within the predefined slice range. This resulted in 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. The same subject-level separation was maintained across the segmentation and classification experiments.
+
 \section{Two-Dimensional Fetal Brain Segmentation}
 
 \subsection{Network Architecture}

@@ -124,13 +124,13 @@ For artifact classification, an additional selection procedure restricted the da
 
 \subsection{Network Architecture}
 
-A two-dimensional segmentation network combining MobileNetV3-Large with a U-Net-based decoder was developed for automated fetal brain localization in diffusion MRI slices. The architecture employed MobileNetV3-Large as the encoder to extract hierarchical image features, while a custom decoder reconstructed the spatial information required for pixel-wise brain segmentation. The network processed single-channel grayscale MRI images of $160 \times 160$ pixels and produced a corresponding segmentation map identifying the fetal brain region. The proposed architecture is illustrated in Figure~\ref{fig:mobilenetv3_unet_architecture}.
+A two-dimensional segmentation network combining MobileNetV3-Large with a U-Net-based decoder was developed for automated fetal brain localization in diffusion MRI slices. The architecture employed MobileNetV3-Large as the encoder to extract hierarchical image features, while a custom decoder reconstructed the spatial information required for pixel-wise brain segmentation. The network processed single-channel grayscale MRI images of $160 \times 160$ pixels and produced a corresponding segmentation map identifying the fetal brain region. The proposed architecture is illustrated in Figure~\ref{fig:mobilevnet}.
 
 \begin{figure}[htbp]
 \centering
-\includesvg[width=\textwidth]{mobilenetv3_unet_architecture}
+\includesvg[width=\textwidth]{mobilevnet}
 \caption{Architecture of the MobileNetV3-Large U-Net for two-dimensional fetal brain segmentation. Five encoder feature scales connect to the four-stage decoder through skip connections. A final convolution produces segmentation logits, which are converted to a binary mask using sigmoid activation and a threshold of 0.5.}
-\label{fig:mobilenetv3_unet_architecture}
+\label{fig:mobilevnet}
 \end{figure}
 
 The encoder was initialized using the ImageNet-pretrained MobileNetV3-Large architecture, excluding its original classification head. Since the pretrained network was designed for three-channel RGB images, the first convolutional layer was modified to accept a single grayscale input channel. The pretrained convolutional weights were adapted by averaging the weights across the three original input channels. Feature maps were extracted at five spatial resolutions, with the deepest representation serving as the bottleneck and the remaining four representations providing skip connections to the decoder.

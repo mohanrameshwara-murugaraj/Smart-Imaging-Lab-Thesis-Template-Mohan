@@ -168,6 +168,26 @@ After each epoch, segmentation performance was assessed on the validation datase
 
 \subsection{Segmentation Inference}
 
+Following network training, the checkpoint achieving the highest validation Dice similarity coefficient was selected for fetal brain segmentation on unseen two-dimensional diffusion MRI slices. During inference, the trained MobileNetV3-Large U-Net was initialized with its saved model parameters and placed in evaluation mode. Predictions were generated without gradient computation to reduce computational overhead.
+
+Each MRI slice underwent the same intensity normalization and spatial resizing procedures described in Section~3.4.2. The normalized image was resized to $160 \times 160$ pixels and represented as a single-channel tensor before being passed through the segmentation network. The network produced a pixel-wise logit map, which was converted into foreground probabilities using the sigmoid activation function:
+\begin{equation}
+P(x,y)=\frac{1}{1+e^{-z(x,y)}},
+\end{equation}
+where $z(x,y)$ denotes the predicted logit at pixel location $(x,y)$, and $P(x,y)$ represents the corresponding probability of belonging to the fetal brain.
+
+A fixed probability threshold of 0.5 was applied to convert the predicted probability map into a binary segmentation mask:
+\begin{equation}
+\hat{M}(x,y)=
+\begin{cases}
+1, & P(x,y)\geq 0.5,\\
+0, & P(x,y)<0.5.
+\end{cases}
+\end{equation}
+Pixels exceeding the threshold were classified as fetal brain foreground, while the remaining pixels were assigned to the background. For subsequent processing of the original MRI slices, the predicted binary masks were resized from $160 \times 160$ pixels to the original image dimensions using nearest-neighbor interpolation. Thresholding was performed before this spatial restoration to preserve the binary representation of the predicted masks.
+
+The resulting segmentation masks were used to localize the fetal brain independently within each MRI slice. Foreground pixels provided the spatial coordinates required for brain bounding-box extraction and subsequent region-of-interest cropping. When a predicted mask contained no foreground pixels, the brain region could not be localized and the corresponding slice was identified as a segmentation failure. These failures were recorded separately from successfully segmented slices and considered during downstream artifact classification and dynamic-level quality assessment.
+
 \section{Brain Region-of-Interest Extraction}
 
 \subsection{Brain Bounding-Box Extraction and Cropping}

@@ -150,6 +150,22 @@ The complete single-slice segmentation procedure is illustrated in Figure~\ref{f
 
 \subsection{Network Training}
 
+The MobileNetV3-Large U-Net was trained using two-dimensional fetal diffusion MRI slices and their corresponding reference brain masks. The training dataset included slices containing fetal brain tissue and a subset of background-only slices to improve the network's ability to distinguish the brain from surrounding maternal and fetal anatomy. All brain-containing training slices were retained, while 25\% of the available background-only slices were sampled for inclusion. The subject-independent validation dataset was used to monitor segmentation performance and select the best-performing model.
+
+The segmentation network was optimized using a combined Dice and binary cross-entropy (BCE) loss function. Dice loss measured the spatial overlap between predicted brain regions and reference segmentation masks, whereas BCE loss penalized errors in individual pixel predictions. The combined objective was defined as
+\begin{equation}
+\mathcal{L}_{\mathrm{seg}} =
+0.7\mathcal{L}_{\mathrm{Dice}}+
+0.3\mathcal{L}_{\mathrm{BCE}}.
+\end{equation}
+The Dice component was calculated using sigmoid-transformed predictions with a smoothing constant of 1 to maintain numerical stability. Binary cross-entropy was computed directly from the segmentation logits. A higher weight was assigned to Dice loss to emphasize accurate foreground overlap, particularly because the fetal brain occupied only a portion of the complete MRI image.
+
+Data augmentation was applied exclusively to the training images to improve robustness to variations in fetal orientation, position, and MRI signal intensity. Spatial augmentation consisted of horizontal flipping with a probability of 0.5, random rotations between $-8^\circ$ and $+8^\circ$, translations between $-0.04$ and $+0.04$ in normalized affine-grid coordinates, and scaling factors ranging from 0.95 to 1.05. Identical geometric transformations were applied to each MRI slice and its corresponding segmentation mask. Bilinear interpolation was used for image transformations, while nearest-neighbor interpolation preserved the binary mask labels. Intensity augmentation included random gain adjustments between 0.90 and 1.10 and intensity offsets between $-0.05$ and $+0.05$, applied with a probability of 0.7. Gaussian noise with a standard deviation ranging from 0 to 0.025 was additionally introduced with a probability of 0.3. Modified image intensities were constrained to the interval $[0,1]$. No random augmentation was applied to the validation or test datasets.
+
+The network was trained using the AdamW optimizer with an initial learning rate of $1 \times 10^{-3}$, weight decay of $1 \times 10^{-4}$, and a batch size of 32. The training configuration specified a maximum of 80 epochs and a random seed of 42. A ReduceLROnPlateau scheduler monitored validation Dice and reduced the learning rate by a factor of 0.5 after four epochs without improvement, subject to a minimum learning rate of $1 \times 10^{-6}$. Gradient clipping with a maximum norm of 5 was applied to improve training stability. Automatic mixed-precision computation was enabled when training on a compatible CUDA GPU.
+
+After each epoch, segmentation performance was assessed on the validation dataset using the Dice similarity coefficient. The model parameters were saved whenever validation Dice improved, and early stopping was applied after 12 consecutive epochs without improvement. The checkpoint achieving the highest validation Dice was selected for subsequent inference and evaluation on the held-out test dataset.
+
 \subsection{Segmentation Inference}
 
 \section{Brain Region-of-Interest Extraction}

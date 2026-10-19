@@ -92,6 +92,14 @@ This process transformed each three-dimensional MRI dynamic into a sequence of t
 
 \subsection{Image Normalization and Resizing}
 
+The extracted two-dimensional fetal diffusion MRI slices underwent intensity normalization and spatial resizing to provide consistent inputs for brain segmentation and artifact classification. Since MRI signal intensities vary across acquisitions and diffusion-weighting conditions, a percentile-based normalization procedure was applied to reduce the influence of extreme intensity values while retaining the relative intensity distribution within each image.
+
+For the two-dimensional segmentation model, the 1st and 99th intensity percentiles were calculated independently for each MRI slice. The calculation was performed using finite, non-zero pixel values when at least 32 such pixels were available; otherwise, all finite pixel values were considered. Intensity values outside the calculated percentile range were clipped, and the remaining values were linearly scaled to the interval $[0,1]$. Non-finite values were handled during normalization, while slices without finite intensity values were represented as zero-valued images.
+
+Following normalization, the MRI slices were resized to $160 \times 160$ pixels using bilinear interpolation. The corresponding reference brain masks were converted into binary representations, with foreground pixels assigned a value of 1 and background pixels assigned a value of 0. The masks were resized to the same dimensions using nearest-neighbor interpolation to preserve their discrete segmentation labels. Both the normalized MRI slices and the reference masks were subsequently represented as single-channel tensors for segmentation model training.
+
+For artifact classification, brain-centered regions of interest were extracted from the original two-dimensional MRI slices using either the reference brain masks or the predicted segmentations. The extracted regions underwent a separate crop-normalization procedure and were resized to $224 \times 224$ pixels using bilinear interpolation. The resulting single-channel images were stored in 32-bit floating-point format, with intensity values constrained to $[0,1]$ before classification. This provided a standardized input representation for the EfficientNet-B0 classifier while restricting the analyzed image region to the localized fetal brain.
+
 \subsection{Artifact Labeling and Slice Selection}
 
 \subsection{Dataset Partitioning}

@@ -124,6 +124,72 @@ For artifact classification, an additional selection procedure restricted the da
 
 \subsection{Network Architecture}
 
+A two-dimensional segmentation network combining MobileNetV3-Large with a U-Net-based decoder was developed for automated fetal brain localization in diffusion MRI slices. The architecture employed MobileNetV3-Large as the encoder to extract hierarchical image features, while a custom decoder reconstructed the spatial information required for pixel-wise brain segmentation. The network processed single-channel grayscale MRI images of $160 \times 160$ pixels and produced a corresponding segmentation map identifying the fetal brain region. The proposed architecture is illustrated in Figure~\ref{fig:mobilenetv3_unet_architecture}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[>=stealth, font=\sffamily\scriptsize,
+  enc/.style={draw=blue!55!black,fill=blue!9,rounded corners=2pt,minimum width=2.8cm,minimum height=0.65cm,align=center},
+  dec/.style={draw=green!50!black,fill=green!9,rounded corners=2pt,minimum width=3cm,minimum height=0.65cm,align=center},
+  out/.style={draw=black!55,fill=gray!8,rounded corners=2pt,minimum width=3cm,minimum height=0.65cm,align=center}]
+\node[enc] (e1) at (0,4.8) {Encoder feature scale 1};
+\node[enc] (e2) at (0,3.6) {Encoder feature scale 2};
+\node[enc] (e3) at (0,2.4) {Encoder feature scale 3};
+\node[enc] (e4) at (0,1.2) {Encoder feature scale 4};
+\node[enc] (e5) at (0,0) {Encoder feature scale 5\\(bottleneck)};
+\node[dec] (d1) at (6,1.2) {Decoder block 1\\256 channels};
+\node[dec] (d2) at (6,2.4) {Decoder block 2\\128 channels};
+\node[dec] (d3) at (6,3.6) {Decoder block 3\\64 channels};
+\node[dec] (d4) at (6,4.8) {Decoder block 4\\32 channels};
+\node[out] (ref) at (10.5,4.8) {Final convolution block\\24 channels};
+\node[out] (logits) at (10.5,3.6) {$1\times1$ convolution\\segmentation logits};
+\node[out] (mask) at (10.5,2.4) {Sigmoid; threshold 0.5\\binary brain mask};
+\foreach \p/\q in {e1/e2,e2/e3,e3/e4,e4/e5,d1/d2,d2/d3,d3/d4} {\draw[->,thick] (\p) -- (\q);}
+\draw[->,thick] (e5.east) -- ++(1.4,0) |- (d1.west);
+\foreach \p/\q in {e4/d1,e3/d2,e2/d3,e1/d4} {\draw[->,dashed,blue!65!black] (\p.east) -- (\q.west);}
+\draw[->,thick] (d4.east) -- (ref.west);
+\draw[->,thick] (ref) -- (logits);
+\draw[->,thick] (logits) -- (mask);
+\node[align=center] at (0,5.55) {\textbf{MobileNetV3-Large encoder}\\ImageNet-pretrained; grayscale-adapted};
+\node[align=center] at (6,5.55) {\textbf{U-Net decoder}\\Upsampling, concatenation, convolutions};
+\node[align=center] at (10.5,5.55) {\textbf{Segmentation output}};
+\node[align=center] at (5.1,-0.7) {Input: $1\times160\times160$\qquad Four skip connections\qquad Trainable parameters: 6,690,633};
+\end{tikzpicture}%
+}
+\caption{Architecture of the MobileNetV3-Large U-Net developed for two-dimensional fetal brain segmentation. Five encoder feature scales are connected to a four-stage convolutional decoder through multiscale skip connections. The final convolution produces segmentation logits, which are converted into a binary fetal brain mask using sigmoid activation and a threshold of 0.5.}
+\label{fig:mobilenetv3_unet_architecture}
+\end{figure}
+
+The encoder was initialized using the ImageNet-pretrained MobileNetV3-Large architecture, excluding its original classification head. Since the pretrained network was designed for three-channel RGB images, the first convolutional layer was modified to accept a single grayscale input channel. The pretrained convolutional weights were adapted by averaging the weights across the three original input channels. Feature maps were extracted at five spatial resolutions, with the deepest representation serving as the bottleneck and the remaining four representations providing skip connections to the decoder.
+
+The decoder consisted of four successive upsampling blocks with output channels of 256, 128, 64, and 32. At each stage, the decoder feature maps were upsampled using bilinear interpolation to match the spatial dimensions of the corresponding encoder features. The upsampled features were concatenated with the encoder features through skip connections and processed using two consecutive $3 \times 3$ convolutions, each followed by batch normalization and the Hardswish activation function. Following the final decoder block, the feature maps were upsampled to the original input resolution and passed through an additional convolutional block containing 24 channels.
+
+A final $1 \times 1$ convolution reduced the feature representation to a single-channel output containing pixel-wise segmentation logits. During inference, a sigmoid activation converted these logits into probabilities between 0 and 1, representing the likelihood of each pixel belonging to the fetal brain. The resulting probabilities were thresholded at 0.5 to obtain binary segmentation masks. The developed MobileNetV3-Large U-Net architecture contained 6,690,633 trainable parameters.
+
+The complete single-slice segmentation procedure is illustrated in Figure~\ref{fig:single_slice_segmentation_workflow}. Each extracted MRI slice was normalized and resized to $160 \times 160$ pixels before being passed through the segmentation network. The resulting binary mask provided the spatial information required for subsequent brain-centered region-of-interest extraction.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[>=stealth, font=\sffamily\scriptsize,
+  step/.style={draw=black!65,fill=blue!6,rounded corners=3pt,minimum width=2.0cm,minimum height=1.0cm,align=center},
+  model/.style={draw=green!55!black,fill=green!10,rounded corners=3pt,minimum width=2.5cm,minimum height=1cm,align=center}]
+\node[step] (input) at (0,0) {2D fetal\\dMRI slice};
+\node[step] (norm) at (2.9,0) {Percentile-based\\normalization\\$[0,1]$};
+\node[step] (resize) at (5.8,0) {Resize to\\$160\times160$};
+\node[model] (net) at (8.9,0) {MobileNetV3-Large\\U-Net};
+\node[step] (prob) at (12,0) {Segmentation\\probabilities};
+\node[step] (binary) at (14.9,0) {Sigmoid and\\threshold 0.5\\binary mask};
+\foreach \p/\q in {input/norm,norm/resize,resize/net,net/prob,prob/binary} {\draw[->,thick] (\p) -- (\q);}
+\node[step,fill=orange!8] (roi) at (14.9,-2) {Brain-centered\\ROI localization};
+\draw[->,thick] (binary) -- (roi);
+\end{tikzpicture}%
+}
+\caption{Single-slice segmentation workflow. Extracted two-dimensional fetal MRI slices undergo percentile-based intensity normalization and resizing prior to inference with the MobileNetV3-Large U-Net. Predicted probabilities are thresholded to produce binary brain masks for subsequent region-of-interest localization.}
+\label{fig:single_slice_segmentation_workflow}
+\end{figure}
+
 \subsection{Network Training}
 
 \subsection{Segmentation Inference}

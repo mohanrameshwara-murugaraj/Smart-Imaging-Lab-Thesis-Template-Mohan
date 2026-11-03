@@ -1,65 +1,57 @@
 \chapter{Results}
 
-\section{Brain Localization and Segmentation}
+\section{Evaluation Framework and Dataset Characteristics}
+\subsection{Dataset Organization and Ground-Truth Annotations}
+\subsection{Dataset Composition and Data Partitioning}
+\subsection{Experimental Evaluation Cohorts}
+\subsection{Evaluation Metrics}
 
-\section{Artifact Detection in the Retrospective Cohort}
+\section{Three-Dimensional Brain Segmentation Results}
+\subsection{Historical Segmentation Experiments}
+\subsection{nnU-Net Segmentation Evaluation}
+\subsection{Qualitative Segmentation and Brain Localization}
 
-\subsection{Incomplete Coverage}
+\section{Three-Dimensional Artifact Classification Results}
+\subsection{Model Training and Selection}
+\subsection{Classification Performance}
+\subsection{Classification Errors and Observed Limitations}
 
-\subsection{Black-Slice Artifacts}
+\section{Three-Dimensional End-to-End Pipeline Evaluation}
+\subsection{Segmentation-to-Classification Processing}
+\subsection{Offline Scanner-Workflow Simulation}
+\subsection{Pipeline Failures and Operational Limitations}
 
-\subsection{Motion Artifacts}
+\section{Two-Dimensional Brain Segmentation Results}
+\subsection{Training Convergence and Model Selection}
+\subsection{Segmentation Performance on the Test Set}
+\subsection{Segmentation Performance Across Image Conditions}
+\subsection{Qualitative Segmentation Results}
 
+\section{Two-Dimensional Artifact Classification Results}
+\subsection{Training and Validation Performance}
+\subsection{Oracle-Crop Classification Results}
+\subsection{Predicted-Crop Classification Results}
+\subsection{Matched Oracle-versus-Predicted Comparison}
 
-\section{Brain Volume and Segmentation Results}
+\section{Brain ROI Reliability and Error Analysis}
+\subsection{Crop Generation Success and Failure}
+\subsection{Segmentation Quality and Crop Reliability}
+\subsection{Qualitative Crop and Classification Failure Cases}
 
+\section{Matched Comparison of the 3D and 2D Pipelines}
+\subsection{Matched Dynamic-Level Evaluation Cohort}
+\subsection{Classification Performance Comparison}
+\subsection{Error Trade-offs and Evaluation Limitations}
 
-\section{2D Segmentation Performance}
+\section{Dynamic-Level Aggregation and Decision Analysis}
+\subsection{Dynamic-Level Aggregation Performance}
+\subsection{Failure-Aware Decision Policies}
+% Retain the following subsection only if an executed sequential experiment is verified.
+\subsection{Sequential Decision Experiments, Where Available}
 
-\subsection{Overall Segmentation Performance}
+\section{Computational Performance and Real-Time Feasibility}
+\subsection{Two-Dimensional Inference Latency}
+\subsection{Three-Dimensional Processing Latency}
+\subsection{Processing-Time Comparison and Feasibility}
 
-\subsection{Segmentation Performance in Good Dynamics}
-
-\subsection{Segmentation Performance in Artifact Dynamics}
-
-\subsection{Segmentation Failure Analysis}
-
-
-\section{Artifact Classification Results}
-
-\subsection{Slice-Level Classification}
-
-\subsection{Dynamic-Level Classification}
-
-\subsection{Confusion Matrix and Classification Metrics}
-
-
-\section{Slice-to-Dynamic Aggregation Results}
-
-\subsection{Mean Aggregation}
-
-\subsection{Median Aggregation}
-
-\subsection{Maximum Aggregation}
-
-\subsection{Top-k Aggregation}
-
-\subsection{Threshold Analysis}
-
-
-\section{Results on the Derived Datasets}
-
-\section{Runtime Analysis}
-
-\section{Comparison of the 2D and 3D Pipelines}
-
-\subsection{Artifact Sensitivity}
-
-\subsection{Specificity}
-
-\subsection{False-Positive Behaviour}
-
-\subsection{Computational Performance}
-
-
-\section{Summary of Results}
+\section{Summary of Experimental Findings}

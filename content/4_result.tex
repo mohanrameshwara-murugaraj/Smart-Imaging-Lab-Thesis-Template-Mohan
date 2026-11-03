@@ -1,10 +1,141 @@
 \chapter{Results}
 
 \section{Evaluation Framework and Dataset Characteristics}
+\label{sec:results_evaluation_framework}
+
+The experimental evaluation was conducted at several levels of the fetal diffusion magnetic resonance imaging (dMRI) data hierarchy, reflecting the different processing strategies investigated in this study. The three-dimensional (3D) pipeline operated on complete diffusion dynamics, whereas the two-dimensional (2D) pipeline performed segmentation and artifact classification on individual slices before combining the classification outputs into a dynamic-level decision. The evaluation therefore involved distinct datasets and analysis populations for brain segmentation, artifact classification, crop generation, and dynamic-level quality assessment.
+
+This section describes the organization of the annotated data, the composition of the experimental datasets, the evaluation populations used in the subsequent analyses, and the performance metrics used to quantify model behavior. Particular attention is given to distinguishing the original dynamic-level quality annotations from derived slice-level classification targets and to identifying differences between the experimental cohorts.
+
 \subsection{Dataset Organization and Ground-Truth Annotations}
+\label{subsec:results_annotations}
+
+The fetal dMRI data were organized into subjects, acquisition sequences, diffusion dynamics, and individual image slices. Each dynamic represented a volumetric MRI acquisition consisting of multiple spatial slices. Quality annotations were assigned at the dynamic level, rather than independently to each constituent slice.
+
+The original annotation table contained 38 case--sequence records, with 22 dynamic annotation positions per record. This resulted in 836 annotation entries, distributed among three categories: good quality (0), artifact-positive (1), and uncertain ($-1$). Of these entries, 655 (78.3\%) were labelled good, 115 (13.8\%) were labelled artifact-positive, and 66 (7.9\%) were assigned to the uncertain category. The distribution is shown in Figure~\ref{fig:original_dynamic_labels} once the corresponding source figure is added to the repository.
+
+% FIGURE TO ADD:
+% Source file supplied for Results chapter: F01_dynamic_label_counts.pdf
+% Copy into the thesis figure directory and uncomment/adapt the figure environment:
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.78\textwidth]{figures/F01_dynamic_label_counts.pdf}
+%   \caption{Distribution of the original diffusion-dynamic quality annotations:
+%   655 good, 115 artifact-positive, and 66 uncertain entries. These are
+%   annotation-table entries rather than the final model evaluation populations.}
+%   \label{fig:original_dynamic_labels}
+% \end{figure}
+%
+% Until the image is added, this cross-reference will remain unresolved.
+
+The predominance of good-quality annotations indicates an imbalanced quality-label distribution in the source data. The uncertain category was excluded when constructing binary artifact-classification targets. However, the annotation-table counts do not directly represent the number of available image files, because subsequent experiments additionally depended on MRI availability, associated segmentation masks, preprocessing requirements, and task-specific inclusion criteria.
+
+The original quality labels were retained as dynamic-level targets in the 3D artifact-classification experiments. For the 2D experiments, slices were extracted from the corresponding volumes and associated with brain-mask information. Since the original quality annotations described complete dynamics, binary classification targets for the individual slices were inherited from their parent dynamic labels.
+
+These derived targets are referred to as \emph{weak slice-level labels}. In particular, a slice extracted from an artifact-positive dynamic received a positive classification target even when the artifact was not necessarily visible within that individual slice. Consequently, the slice-level classification results quantify agreement with inherited dynamic-quality labels rather than independently verified slice-level artifact annotations.
+
+A separate distinction applies to brain-presence annotations used during slice selection. Slices with insufficient or absent fetal-brain content could be excluded from the classification dataset. This brain-presence criterion was not treated as an additional artifact-quality category.
+
 \subsection{Dataset Composition and Data Partitioning}
+\label{subsec:results_dataset_splits}
+
+Different experimental datasets were constructed for volumetric segmentation, volumetric artifact classification, slice-wise segmentation, and slice-wise artifact classification. Their sizes and partitioning strategies are therefore reported separately.
+
+\paragraph{Three-dimensional experimental datasets.}
+The volumetric brain-segmentation dataset comprised 770 MRI entries associated with the 3D segmentation experiments. The final nnU-Net dataset configuration listed 600 training images and 170 test images. Examination of the dataset manifest identified 35 distinct subject identifiers, with subjects represented in both partitions. The partitioning was therefore separated at the volume-entry level rather than at the subject level.
+
+The 770-entry dataset was also used in an earlier exploratory custom 3D U-Net experiment, which employed a random allocation of 616 MRI--mask pairs to training and 154 pairs to testing. These represent distinct segmentation experiments and must not be interpreted as identical evaluation protocols.
+
+For the subsequent 3D artifact-classification pipeline, the recovered classifier dataset contained 600 dynamic-level records from 35 subjects. Of these, 508 were labelled good and 92 were labelled artifact-positive. The dataset was associated with brain-region processing and the custom 3D ResNet classifier.
+
+Although an export containing 600 ResNet predictions was recovered, the relationship between those predictions and the data used for model training and selection has not been fully established. The 600 prediction records are therefore not automatically interpreted as an independent test population. The corresponding performance results are examined with this qualification in Section~4.3.
+
+\paragraph{Two-dimensional experimental datasets.}
+The 2D pipeline used subject-based data partitioning. For the artifact-classification experiments, the recovered dataset contained 9,113 selected slices from 24 subjects. These were distributed among training, validation, and test subsets containing 16, four, and four subjects, respectively.
+
+The classifier-relevant slices were selected from the brain-present portion of the dynamic, using slice indices 8--25. The resulting partitions contained 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The recovered classifier metadata confirmed that the subject identifiers were disjoint across these three partitions.
+
+The corresponding class distributions are summarized in Table~\ref{tab:2d_classification_splits}.
+
+\begin{table}[htbp]
+\centering
+\caption{Composition of the 2D artifact-classification dataset according to subject-based partitions and inherited dynamic-level quality labels.}
+\label{tab:2d_classification_splits}
+\begin{tabular}{lrrrr}
+\hline
+Dataset partition & Subjects & Good-labelled & Artifact-labelled & Total slices \\
+\hline
+Training & 16 & 4,996 & 1,082 & 6,078 \\
+Validation & 4 & 1,405 & 101 & 1,506 \\
+Test & 4 & 1,258 & 271 & 1,529 \\
+\hline
+Total & 24 & 7,659 & 1,454 & 9,113 \\
+\hline
+\end{tabular}
+\end{table}
+
+The artifact-positive proportion differed between the partitions, accounting for 17.8\% of training slices, 6.7\% of validation slices, and 17.7\% of test slices. This difference is relevant when interpreting class-sensitive performance measures, particularly precision and precision--recall analysis.
+
+The 2D segmentation evaluation used a broader slice population than the restricted artifact-classification dataset. The recorded segmentation test set contained 3,168 slices from four subjects, comprising 1,902 brain-present slices and 1,266 slices without reference brain content. Accordingly, segmentation metrics calculated over the broader test set must not be treated as measurements over the 1,529 classifier-selected test slices.
+
 \subsection{Experimental Evaluation Cohorts}
+\label{subsec:results_evaluation_cohorts}
+
+Several evaluation populations were used to investigate different components of the proposed pipelines. These populations differed in their analysis units, sample sizes, and experimental objectives.
+
+For 2D brain segmentation, the full test population of 3,168 slices was used to evaluate fetal-brain localization, including images with and without brain content. Further subgroup analyses examined segmentation behavior specifically within brain-present slices and across the original dynamic-quality categories.
+
+For 2D artifact classification, the principal restricted test set contained 1,529 brain-present slices. Reference-mask-based crops, referred to as \emph{oracle crops}, were available for all 1,529 slices. Automatic crops generated from predicted segmentation masks were available for 1,499 slices, while 30 slices did not yield a usable predicted crop.
+
+Consequently, two complementary classification evaluation populations were distinguished: the complete 1,529-slice oracle-crop test set and the common 1,499-slice subset for which both oracle and predicted crops were available. The latter provided the matched population for comparing the two classifier input strategies. The 30 unavailable predicted crops were examined separately as segmentation-to-classification pipeline failures.
+
+A distinct dynamic-level evaluation comprised 88 dynamics from four held-out subjects, including 70 good-labelled and 18 artifact-positive dynamics. This population was used to evaluate aggregated 2D classification decisions and recorded failure-aware decision policies.
+
+An additional matched comparison dataset contained 71 dynamics from four subjects, consisting of 59 good-labelled and 12 artifact-positive dynamics. The recovered records included paired 3D and 2D prediction labels for each dynamic, and the aggregate confusion matrices were consistent with the previously reported comparison results. The provenance of the associated model checkpoints and the independence of the 3D evaluation data from model development remain relevant qualifications for interpreting this comparison.
+
+The principal evaluation populations are summarized in Table~\ref{tab:results_cohorts}.
+
+\begin{table}[htbp]
+\centering
+\caption{Overview of the principal experimental datasets and evaluation populations.}
+\label{tab:results_cohorts}
+\begin{tabular}{lrl}
+\hline
+Evaluation component & Population & Evaluation unit \\
+\hline
+Original quality annotations & 836 & Annotation-table entry \\
+3D segmentation dataset & 770 & Volume entry \\
+Recovered 3D classifier dataset & 600 & Dynamic \\
+2D segmentation test & 3,168 & Slice \\
+2D classification test & 1,529 & Slice \\
+Matched oracle/predicted classification & 1,499 & Slice \\
+2D dynamic-level evaluation & 88 & Dynamic \\
+Matched 3D-versus-2D evaluation & 71 & Dynamic \\
+\hline
+\end{tabular}
+\end{table}
+
+These populations were not combined into a single pooled evaluation dataset. In particular, the 71-dynamic matched comparison and the 88-dynamic 2D evaluation represent separate experimental records, while the 1,499-slice matched crop comparison is a subset of the 1,529-slice classification test population.
+
+Furthermore, individual slices within a dynamic and multiple dynamics acquired from the same fetus are not statistically independent biological observations. Subject-level partitioning was therefore important for the 2D experimental design, while the documented subject overlap in the 3D segmentation dataset and the unresolved 3D classifier training--evaluation relationship require explicit consideration when interpreting generalization.
+
 \subsection{Evaluation Metrics}
+\label{subsec:results_evaluation_metrics}
+
+The experimental results were assessed using metrics appropriate to the segmentation and artifact-classification tasks.
+
+Brain-segmentation performance was evaluated primarily using the Dice similarity coefficient and intersection over union (IoU), which quantify the spatial overlap between predicted brain masks and reference masks. Segmentation sensitivity and specificity were additionally used to describe the identification of brain and background pixels. Dice distributions and cases with missing or incomplete predicted masks were examined to identify variation that could be obscured by overall average performance.
+
+For binary artifact classification, the artifact-positive category was defined as the positive class. True positives (TP) corresponded to correctly identified artifact-positive slices or dynamics, while false negatives (FN) represented artifact-positive observations classified as good. False positives (FP) were good-quality observations incorrectly classified as artifact-positive, and true negatives (TN) were correctly classified good-quality observations.
+
+Classification performance was summarized using accuracy, precision, recall (artifact sensitivity), specificity, and the F1-score. Where continuous prediction probabilities were available, receiver operating characteristic area under the curve (ROC-AUC) and precision--recall analysis were also used to assess discrimination across decision thresholds.
+
+Because good-quality observations were more frequent than artifact-positive observations in several evaluation populations, overall accuracy alone was not considered sufficient to characterize classification performance. Particular attention was given to artifact sensitivity, the number of missed artifact-positive observations, and the trade-off between artifact detection and false-positive decisions.
+
+For dynamic-level evaluation, classification metrics were calculated after combining slice-level outputs into a single decision for each diffusion dynamic. These results were reported separately from the slice-level metrics, since the two analyses differ in both their unit of prediction and their evaluation denominator.
+
+Finally, crop-generation reliability was described using the number and proportion of successful and unsuccessful predicted crops. Computational performance was assessed using recorded processing times, with separate reporting of slice-level inference, volumetric processing, and individual pipeline stages whenever corresponding measurements were available. These complementary measurements provided the basis for evaluating classification behavior, robustness, and computational feasibility in the subsequent sections.
 
 \section{Three-Dimensional Brain Segmentation Results}
 \subsection{Historical Segmentation Experiments}

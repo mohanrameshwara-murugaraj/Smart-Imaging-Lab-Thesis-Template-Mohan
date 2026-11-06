@@ -138,9 +138,48 @@ For dynamic-level evaluation, classification metrics were calculated after combi
 Finally, crop-generation reliability was described using the number and proportion of successful and unsuccessful predicted crops. Computational performance was assessed using recorded processing times, with separate reporting of slice-level inference, volumetric processing, and individual pipeline stages whenever corresponding measurements were available. These complementary measurements provided the basis for evaluating classification behavior, robustness, and computational feasibility in the subsequent sections.
 
 \section{Three-Dimensional Brain Segmentation Results}
+\label{sec:results_3d_segmentation}
+
+Volumetric brain segmentation was investigated as the first processing stage of the 3D artifact-detection pipeline. The experiments initially examined a custom three-dimensional U-Net architecture and subsequently adopted nnU-Net for fetal-brain localization prior to volumetric cropping and artifact classification. The available results are presented separately because the two approaches differed in their training procedures and evaluation evidence.
+
 \subsection{Historical Segmentation Experiments}
+\label{subsec:historical_3d_segmentation}
+
+The initial segmentation experiment employed a custom 3D U-Net trained using 770 MRI--brain-mask pairs. A random volume-level partition assigned 616 pairs to training and 154 pairs to testing. The model was trained for 25 epochs, and the recorded training history showed a progressive improvement in spatial overlap between predicted and reference masks.
+
+The training Dice coefficient increased from 0.7825 in the first epoch to 0.9656 at epoch 25. Over the same period, training loss decreased from 0.6177 to 0.0361. The largest improvement occurred during the initial epochs, followed by smaller fluctuations as training progressed. The corresponding trajectories are available as historical figures \texttt{F04\_historical\_3D\_training\_dice.pdf} and \texttt{F05\_historical\_3D\_training\_loss.pdf}, pending placement in the thesis figure directory.
+
+These measurements demonstrate improved agreement on the training data over the recorded optimization period. However, no separate validation history or independently selected best-validation checkpoint was documented for this experiment. The final training Dice must therefore not be interpreted as held-out segmentation performance.
+
+A subsequent limited inspection of predicted segmentation masks revealed that the model did not consistently identify the fetal brain in every processed volume. In one recorded inference attempt involving five selected volumes, three produced predicted masks and associated crops, while two did not yield a detectable brain region. These cases demonstrated that successful optimization on the training population did not guarantee successful localization for every input volume.
+
+Four additional mask comparisons were recorded in the exploratory notebook, with Dice coefficients of 0.7708, 0.7183, 0.3379, and 0.7527. However, the archived evaluation procedure did not reliably establish correspondence between the subject identifiers of all predictions and reference masks. These overlap values were therefore retained only as historical observations and were excluded from the quantitative assessment of the final segmentation pipeline.
+
+Taken together, the exploratory experiments demonstrated that volumetric brain-mask prediction was feasible within the investigated training setting, while also revealing localization failures and limitations in the original evaluation procedure.
+
 \subsection{nnU-Net Segmentation Evaluation}
+\label{subsec:nnunet_segmentation_evaluation}
+
+The subsequent 3D pipeline incorporated nnU-Net as the fetal-brain segmentation stage. The recovered dataset configuration contained 770 volumetric MRI entries, comprising 600 training entries and 170 test entries. The manifest identified 35 distinct subject identifiers, with subjects occurring in both partitions. Thus, the recorded partitioning did not provide an independent subject-level test population.
+
+The nnU-Net segmentation stage was used to generate brain masks for subsequent volumetric region-of-interest extraction and artifact classification. The recovered 3D classifier dataset contained 600 dynamic-level records associated with this downstream processing workflow, demonstrating the availability of a substantial set of processed classification inputs. However, the number of downstream classifier records does not independently establish segmentation accuracy or successful brain localization in every case.
+
+The recovered evidence did not include a complete, verifiable held-out nnU-Net segmentation evaluation containing reference masks, corresponding predictions, and aggregate overlap metrics. Consequently, a final test Dice coefficient, test IoU, or distribution of per-volume segmentation accuracy cannot be reported for this model from the presently available evidence.
+
+This limitation is particularly relevant because the segmentation dataset included overlapping subject identities across its training and test partitions. Even if volume-level test metrics were recovered, their interpretation would need to account for this partitioning structure rather than treating the observations as independent evaluations on previously unseen fetuses.
+
+The quantitative assessment of the final nnU-Net stage is therefore restricted to the documented dataset composition and its role in generating downstream brain-region inputs. Classification results obtained from those inputs are presented separately in Section~4.3.
+
 \subsection{Qualitative Segmentation and Brain Localization}
+\label{subsec:3d_segmentation_qualitative}
+
+The qualitative assessment of volumetric segmentation focused on whether predicted masks identified a usable fetal-brain region for subsequent cropping. This distinction is important because successful generation of a non-empty mask does not necessarily imply accurate anatomical localization.
+
+The exploratory 3D U-Net experiment provided direct evidence of missing-mask outcomes in selected inference cases. Such failures prevented the extraction of a brain-region crop and consequently interrupted the intended segmentation-to-classification workflow. The four archived numerical mask comparisons further illustrated variable segmentation agreement, but their unresolved subject correspondence prevents them from serving as reliable representative examples of final model performance.
+
+For the later nnU-Net pipeline, the recovered materials established that predicted brain masks were incorporated into volumetric preprocessing. Nevertheless, a matched visual collection containing the original MRI, reference brain mask, and final nnU-Net prediction for the same subject and dynamic was not available in the verified evidence package. Therefore, no claim regarding the frequency or anatomical distribution of final nnU-Net localization errors can be substantiated.
+
+The available 3D segmentation results consequently provide evidence of model-development progress and the implementation of volumetric brain localization, but do not establish independently verified segmentation generalization for the final nnU-Net component. The implications for downstream artifact classification are examined using the available 3D classifier predictions and pipeline records in the following sections.
 
 \section{Three-Dimensional Artifact Classification Results}
 \subsection{Model Training and Selection}

@@ -307,10 +307,104 @@ The available evidence did not provide a verified case-level linkage between the
 The end-to-end results consequently establish the implementation of a volumetric segmentation-to-classification workflow, demonstrate the feasibility of an offline file-triggered quality-assessment simulation, and identify processing and classification failure modes. Nevertheless, the recovered evidence does not support a quantitative full-pipeline completion rate, an independently validated end-to-end artifact-detection rate, or a claim of prospective scanner-integrated real-time operation.
 
 \section{Two-Dimensional Brain Segmentation Results}
+\label{sec:results_2d_segmentation}
+
+The two-dimensional segmentation pipeline employed a MobileNetV3-U-Net model to identify the fetal brain within individual diffusion MRI slices. Its performance was evaluated using the recorded training and validation histories, segmentation metrics obtained on the held-out test population, and additional per-slice measurements associated with subsequent brain-region cropping. The results are presented in terms of model selection, overall segmentation performance, variation across image conditions, and representative localization failures.
+
 \subsection{Training Convergence and Model Selection}
+\label{subsec:results_2d_segmentation_training}
+
+The MobileNetV3-U-Net segmentation experiment was recorded over 51 training epochs. The training history showed a progressive reduction in training loss and an increase in training Dice, while validation performance exhibited greater variation between epochs.
+
+During the first epoch, training Dice was 0.6612 and validation Dice was 0.0244. By epoch 5, these values had increased to 0.8829 and 0.8194, respectively. Improvements continued during subsequent training, although the validation Dice did not increase monotonically.
+
+The highest recorded validation Dice of 0.8749 was achieved at epoch 39, with a corresponding validation IoU of 0.8471 and validation loss of 0.0918. At this epoch, training Dice was 0.9288. By the final recorded epoch, training Dice had increased slightly to 0.9303, whereas validation Dice was 0.8710. The epoch selected by validation Dice therefore differed from the final training epoch.
+
+% FIGURE PENDING: H01_segmentation_dice_history.pdf
+% Insert a real figure environment once the source PDF is committed.
+The recorded training and validation trajectories are available in \texttt{H01\_segmentation\_dice\_history.pdf}, pending insertion into the thesis figure directory.
+
+The training and validation loss curves provide complementary evidence of optimization behavior. Although training loss declined substantially during the experiment, the validation loss fluctuated rather than decreasing uniformly. The selected validation Dice maximum provides the principal reference point for interpreting the recorded model-selection outcome.
+
 \subsection{Segmentation Performance on the Test Set}
+\label{subsec:results_2d_segmentation_test}
+
+The recorded segmentation test evaluation comprised 3,168 two-dimensional MRI slices, including 1,902 slices containing reference fetal-brain regions and 1,266 slices without reference brain content.
+
+The test evaluation reported a Dice coefficient of 0.8620 and an intersection over union (IoU) of 0.8339. Brain-region sensitivity was 0.9063 and specificity was 0.9989. The recorded test loss was 0.1006. The segmentation model contained approximately 6.69 million trainable parameters.
+
+\begin{table}[htbp]
+\centering
+\caption{Reported segmentation performance of MobileNetV3-U-Net on the 3,168-slice test population.}
+\label{tab:2d_segmentation_test_metrics}
+\begin{tabular}{lr}
+\hline
+Metric & Value \\
+\hline
+Dice coefficient & 0.8620 \\
+Intersection over union & 0.8339 \\
+Sensitivity & 0.9063 \\
+Specificity & 0.9989 \\
+Test loss & 0.1006 \\
+Model parameters & 6.69 million \\
+\hline
+\end{tabular}
+\end{table}
+
+The high specificity indicates that the model generally distinguished background pixels from the relatively small fetal-brain regions. Nevertheless, the overall overlap metrics summarize images with differing amounts of brain content and do not fully characterize segmentation performance within the brain-containing subset.
+
+The separate brain-present-slice evaluation previously reported a mean Dice of 0.9106 and a median Dice of 0.9700 across 1,902 slices. The difference between these values indicates that the distribution included a subset of substantially poorer segmentation outcomes despite high overlap in many individual images.
+
+The metric values in Table~\ref{tab:2d_segmentation_test_metrics} were taken from the recorded test evaluation. The precise averaging implementation, including its treatment of empty reference masks, remains relevant when comparing these aggregate measurements against the per-slice Dice distributions.
+
 \subsection{Segmentation Performance Across Image Conditions}
+\label{subsec:results_2d_segmentation_subgroups}
+
+To investigate segmentation behavior under different acquisition-quality conditions, per-slice overlap measurements were examined for the restricted set of 1,529 brain-present slices subsequently considered for artifact-classification cropping. These slices belonged to the held-out classifier test partition and were stratified according to the original quality annotation of their parent dynamic.
+
+Among 1,258 slices from good-labelled dynamics, mean Dice was 0.9511 and median Dice was 0.9746. In contrast, the 271 slices from artifact-positive dynamics had a mean Dice of 0.8081 and median Dice of 0.9562.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-slice segmentation overlap and predicted-crop availability in the restricted classifier test population, grouped by parent dynamic quality annotation.}
+\label{tab:2d_segmentation_label_subgroups}
+\begin{tabular}{lrrrr}
+\hline
+Parent dynamic label & Slices & Mean Dice & Median Dice & Crops unavailable \\
+\hline
+Good & 1,258 & 0.9511 & 0.9746 & 2 \\
+Artifact-positive & 271 & 0.8081 & 0.9562 & 28 \\
+\hline
+Total & 1,529 & 0.9258 & 0.9728 & 30 \\
+\hline
+\end{tabular}
+\end{table}
+
+The lower mean Dice in the artifact-positive group demonstrates greater variability in brain localization among slices belonging to degraded dynamics. The median Dice remained relatively high in both groups, indicating that many artifact-labelled images could still be segmented accurately, while a smaller number of poor outcomes reduced the mean substantially.
+
+The difference was also evident in predicted-mask availability. Among good-labelled slices, two of 1,258 (0.16\%) failed to produce a usable predicted crop, compared with 28 of 271 (10.33\%) artifact-labelled slices. These outcomes were associated with empty or unusable predicted masks.
+
+% FIGURE PENDING: R01_segmentation_dice_distribution.pdf
+The per-slice Dice distributions are provided in \texttt{R01\_segmentation\_dice\_distribution.pdf}, pending insertion into the thesis figure directory.
+
+These subgroup results are based on inherited dynamic-level quality labels. They therefore indicate an association between the parent dynamic's quality category and segmentation reliability, rather than proving that every individual slice in the artifact-positive group visibly contains an artifact.
+
 \subsection{Qualitative Segmentation Results}
+\label{subsec:results_2d_segmentation_qualitative}
+
+Qualitative inspection of selected test slices illustrated the variation in segmentation outcomes. The recorded examples included accurate fetal-brain localization, incomplete segmentation, and cases in which a predicted mask failed to identify a usable brain region.
+
+In one good-labelled example, subject \texttt{fetus9\_nz}, dynamic 13, slice 19, the predicted segmentation achieved a Dice coefficient of approximately 0.9913, demonstrating close spatial agreement with the reference mask. A second good-labelled example from the same subject, dynamic 20, slice 11, achieved a Dice of 0.8996 and illustrated a less complete, but still usable, segmentation.
+
+The selected artifact-labelled examples showed more substantial localization difficulties. Subject \texttt{mibirth014701\_nz}, dynamic 20, slice 15, produced a predicted crop despite a Dice coefficient close to zero, illustrating that crop generation alone does not establish accurate anatomical localization. Another example, subject \texttt{mibirth013901\_nz}, dynamic 15, slice 20, had a near-zero Dice coefficient and did not yield a usable predicted crop.
+
+% FIGURE PENDING: R09_revised_identified.pdf
+% Use the revised identified panel with the original MRI and matched masks and crops.
+These examples are provided in \texttt{R09\_revised\_identified.pdf}, pending insertion into the thesis figure directory.
+
+The examples demonstrate two distinct failure conditions: complete failure to generate a usable predicted crop and generation of a crop from an anatomically inaccurate predicted mask. The latter is particularly important because a technically successful cropping operation may still provide unsuitable image content for downstream classification.
+
+Overall, the MobileNetV3-U-Net achieved substantial overlap with reference brain masks on the recorded test population, with stronger results for slices from good-quality dynamics. The observed lower Dice values and higher missing-mask frequency among slices from artifact-positive dynamics identify a potential weakness in the segmentation-to-classification workflow. The consequences for crop reliability and downstream classification are examined further in Section~4.7.
 
 \section{Two-Dimensional Artifact Classification Results}
 \subsection{Training and Validation Performance}

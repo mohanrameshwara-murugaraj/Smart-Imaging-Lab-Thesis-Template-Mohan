@@ -592,9 +592,94 @@ The recovered data establish that both mechanisms occurred, but they do not inde
 The main reliability limitation of the 2D ROI stage was therefore not restricted to the 30 unavailable test crops. Additional cases had sufficiently poor spatial agreement that crop availability alone overstated anatomical localization quality. These results support treating mask-generation failure and inaccurate but successful cropping as distinct outcomes when interpreting the end-to-end artifact-classification pipeline.
 
 \section{Matched Comparison of the 3D and 2D Pipelines}
+\label{sec:results_3d_vs_2d}
+
+The three-dimensional and two-dimensional artifact-detection pipelines were compared using a common set of diffusion dynamics. Unlike the preceding slice-level evaluations, this analysis used the complete diffusion dynamic as the unit of prediction for both approaches. The comparison examined artifact sensitivity, specificity, overall classification performance, and the distribution of false-positive and false-negative decisions.
+
+The recovered matched prediction records allowed the reported confusion matrices to be reconstructed on identical observations. Nevertheless, the independence of the 3D evaluation population from model training and the exact provenance of the comparison experiment could not be fully established. The results are therefore presented as a matched comparison of recorded predictions, rather than as conclusive evidence of generalization to independent subjects.
+
 \subsection{Matched Dynamic-Level Evaluation Cohort}
+\label{subsec:results_matched_dynamic_cohort}
+
+The matched comparison comprised 71 diffusion dynamics from four subjects. Of these, 59 were labelled good quality and 12 were labelled artifact-positive. Each dynamic was represented by a reference quality label and corresponding binary predictions from the 3D and 2D pipelines.
+
+The recovered dataset included 19 dynamics from \texttt{fetus9\_nz}, 19 from \texttt{fm0317\_nz}, 17 from \texttt{mibirth013901\_nz}, and 16 from \texttt{mibirth014701\_nz}. The numbers of artifact-positive dynamics in these subjects were zero, four, five, and three, respectively. No duplicate subject--dynamic identifiers were identified.
+
+The 3D approach classified each dynamic using a volumetric ResNet prediction. The 2D approach combined slice-level information into a dynamic-level decision, including a segmentation-failure indicator. The recovered 2D records contained the aggregated artifact score, classifier decision flag, segmentation-failure flag, and final binary quality prediction.
+
+The reconstructed predictions reproduced the confusion matrices documented in the September 2026 comparison presentation. The 3D prediction labels also matched the corresponding records in the recovered 600-dynamic ResNet prediction export.
+
+However, the matching of identifiers and prediction labels does not independently establish that the 71-dynamic population was excluded from ResNet training or checkpoint selection. The source recovery process also identified the matched CSV as a candidate reconstruction whose original execution provenance requires confirmation. These qualifications are retained when interpreting the results.
+
 \subsection{Classification Performance Comparison}
+\label{subsec:results_matched_pipeline_metrics}
+
+The 3D pipeline correctly identified all 12 artifact-positive dynamics, while the 2D pipeline identified six and missed the remaining six. The 3D approach therefore achieved an artifact sensitivity of 100.0\% within this population, compared with 50.0\% for the 2D approach.
+
+The relationship was reversed for correctly identifying good-quality dynamics. The 3D classifier generated nine false-positive artifact decisions among 59 good dynamics, whereas the 2D approach generated four. Corresponding specificities were 84.7\% and 93.2\%.
+
+The confusion matrices are summarized in Table~\ref{tab:results_matched_pipeline_confusion}.
+
+\begin{table}[htbp]
+\centering
+\caption{Dynamic-level classification outcomes for the matched 71-dynamic comparison population.}
+\label{tab:results_matched_pipeline_confusion}
+\begin{tabular}{lrr}
+\hline
+Outcome & 3D ResNet & 2D failure-aware QC \\
+\hline
+True positives & 12 & 6 \\
+False negatives & 0 & 6 \\
+False positives & 9 & 4 \\
+True negatives & 50 & 55 \\
+\hline
+Total evaluated & 71 & 71 \\
+\hline
+\end{tabular}
+\end{table}
+
+Overall classification accuracy was 87.3\% for the 3D approach and 85.9\% for the 2D approach. Artifact precision was 57.1\% and 60.0\%, respectively, while the F1-scores were 72.7\% and 54.5\%.
+
+\begin{table}[htbp]
+\centering
+\caption{Performance metrics for the matched 3D and 2D dynamic-level evaluation.}
+\label{tab:results_matched_pipeline_performance}
+\begin{tabular}{lrr}
+\hline
+Metric & 3D ResNet & 2D failure-aware QC \\
+\hline
+Accuracy & 87.3\% & 85.9\% \\
+Artifact sensitivity & 100.0\% & 50.0\% \\
+Specificity & 84.7\% & 93.2\% \\
+Artifact precision & 57.1\% & 60.0\% \\
+Artifact F1-score & 72.7\% & 54.5\% \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURE PENDING: Side-by-side confusion matrices on the matched n=71 cohort.
+% Include exact class counts, positive-class definition, and provenance warning.
+
+The higher artifact sensitivity of the 3D approach was accompanied by more false-positive decisions. Conversely, the 2D approach provided greater specificity at the cost of missing half of the artifact-positive dynamics. The difference in overall accuracy was limited to one additional correctly classified dynamic for the 3D approach, despite the larger difference in artifact sensitivity.
+
+The matched prediction records also allowed examination of agreement between the two methods. Both pipelines correctly classified 52 dynamics. The 3D model alone produced the correct decision in ten dynamics, while the 2D model alone was correct in nine. No dynamic was incorrectly classified by both approaches in the recovered matched file. Thus, the two approaches made substantially different errors, even though their overall numbers of correct classifications were similar.
+
 \subsection{Error Trade-offs and Evaluation Limitations}
+\label{subsec:results_matched_pipeline_limitations}
+
+The observed results demonstrate a trade-off between detecting artifact-positive dynamics and incorrectly rejecting good-quality acquisitions. Within the matched population, the 3D classifier detected six additional artifact-positive dynamics relative to the 2D approach but also rejected five additional good-quality dynamics.
+
+The recorded 2D decision combined artifact-classification information with segmentation-failure information. Among the ten dynamics assigned an artifact-positive decision by the 2D pipeline, three were triggered by the classifier decision flag and seven by the segmentation-failure flag. Of the seven failure-triggered decisions, five corresponded to artifact-positive dynamics and two to good-quality dynamics.
+
+This distinction indicates that segmentation failure contributed materially to the 2D pipeline's artifact-detection behavior in the matched comparison. However, a segmentation-failure flag is not equivalent to direct visual evidence of an artifact, and its use as an artifact-positive decision rule introduces the possibility of rejecting good-quality dynamics because brain localization failed.
+
+The small number of artifact-positive observations also limits interpretation. With only 12 positive dynamics, each additional correctly detected artifact corresponds to an 8.3-percentage-point change in sensitivity. Moreover, the 71 dynamics originated from only four subjects, and observations within the same subject cannot be treated as independent biological samples. No subject-clustered uncertainty estimate or formal paired statistical comparison was established for this analysis.
+
+A more substantial limitation concerns evaluation provenance. The recovered 3D classifier prediction export contained all 600 records from the corresponding classifier dataset, including the 71 dynamics used in the comparison. The available evidence did not establish which observations were used for ResNet training and checkpoint selection. Therefore, possible training--evaluation overlap cannot be excluded. The 3D results must not be interpreted as independently demonstrated generalization to previously unseen subjects.
+
+The provenance of the final 2D aggregation rule within the 71-dynamic experiment also requires qualification, particularly regarding threshold selection and the treatment of segmentation failures. Although the saved records reproduce the reported binary decisions, their presence does not by itself demonstrate that the operating rule was selected independently of the evaluated population.
+
+Consequently, the matched comparison establishes the observed difference between the recorded pipeline decisions: higher artifact sensitivity but more false positives for the 3D classifier, and higher specificity but more missed artifacts for the 2D failure-aware approach. It does not establish that either pipeline would retain the same performance on an independently collected prospective dataset. The broader dynamic-level decision experiments and the influence of failure-aware aggregation are examined in Section~4.9.
 
 \section{Dynamic-Level Aggregation and Decision Analysis}
 \subsection{Dynamic-Level Aggregation Performance}

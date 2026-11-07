@@ -500,9 +500,96 @@ Importantly, both classifiers were evaluated against weak labels derived from dy
 Overall, the classification experiments demonstrate that the 2D pipeline was able to produce artifact-probability estimates from both oracle and predicted brain crops, but that artifact sensitivity remained limited. The results highlight the distinction between successful fetal-brain localization, successful crop generation, and reliable classification of artifact-positive image content.
 
 \section{Brain ROI Reliability and Error Analysis}
+\label{sec:results_roi_reliability}
+
+The reliability of the two-dimensional region-of-interest (ROI) extraction stage was evaluated by examining whether predicted brain masks produced usable crops and whether those crops corresponded spatially to the reference fetal-brain regions. This evaluation distinguished technical crop-generation success from anatomical localization accuracy. The analysis used the saved crop metadata for the training, validation, and test partitions, with detailed error analysis performed on the 1,529-slice test population.
+
 \subsection{Crop Generation Success and Failure}
+\label{subsec:results_crop_success}
+
+Reference-mask-based oracle crops were available for all 9,113 selected classification slices. In contrast, predicted-mask-based cropping successfully produced 8,951 crops, while 162 slices did not yield a usable predicted crop. The overall predicted-crop availability was therefore 98.2\%.
+
+The training partition contained 5,954 successful predicted crops from 6,078 selected slices, corresponding to 98.0\% availability. The validation partition produced 1,498 crops from 1,506 slices (99.5\%), and the test partition produced 1,499 crops from 1,529 slices (98.0\%). These results are summarized in Table~\ref{tab:roi_crop_availability}.
+
+\begin{table}[htbp]
+\centering
+\caption{Oracle- and predicted-crop availability across the subject-based classification partitions.}
+\label{tab:roi_crop_availability}
+\begin{tabular}{lrrrr}
+\hline
+Partition & Selected slices & Oracle crops & Predicted crops & Failed crops \\
+\hline
+Training & 6,078 & 6,078 & 5,954 & 124 \\
+Validation & 1,506 & 1,506 & 1,498 & 8 \\
+Test & 1,529 & 1,529 & 1,499 & 30 \\
+\hline
+Total & 9,113 & 9,113 & 8,951 & 162 \\
+\hline
+\end{tabular}
+\end{table}
+
+All 30 failed predicted crops in the test metadata were associated with empty predicted segmentation masks. No failed test crops were recorded with a non-empty predicted mask. Thus, the recorded failures occurred at the mask-generation stage rather than because a crop could not be extracted from a non-empty mask.
+
+Crop failure was strongly concentrated among slices belonging to artifact-positive dynamics. Of the 1,258 good-labelled test slices, only two failed to produce a predicted crop (0.16\%). In comparison, 28 of the 271 slices inherited from artifact-positive dynamics failed (10.33\%). The corresponding crop-generation success rates were 99.84\% and 89.67\%, respectively.
+
+% FIGURE PENDING: R02 predicted-crop generation outcomes stratified by parent dynamic quality label.
+% Insert only after committing the original, verified image PDF.
+
+The 30 failed test slices originated from two subjects: 22 from \texttt{mibirth013901\_nz} and eight from \texttt{mibirth014701\_nz}. These failures occurred across 12 distinct subject--dynamic combinations. Consequently, the failures were clustered within a limited number of subjects and dynamics, rather than representing 30 independent fetal observations.
+
+The substantially greater crop-failure frequency in artifact-positive dynamics is relevant to downstream artifact classification. Because predicted-crop classifier evaluation required a usable crop, the 28 failed slices from artifact-positive dynamics were excluded from its 1,499-slice test population. This exclusion altered the evaluated class distribution and means that classification metrics conditional on successful crop generation do not describe every selected test slice.
+
 \subsection{Segmentation Quality and Crop Reliability}
+\label{subsec:results_crop_quality}
+
+Technical crop-generation success was not equivalent to accurate fetal-brain localization. To examine this distinction, segmentation Dice scores were evaluated alongside predicted-crop availability.
+
+In the restricted test population, the mean Dice was 0.9511 for slices from good-labelled dynamics and 0.8081 for slices from artifact-positive dynamics. The corresponding median values were 0.9746 and 0.9562, respectively, as reported in Section~4.5. The lower mean in the artifact-positive group indicates that its overlap distribution contained more severe segmentation failures, despite relatively high median scores.
+
+Among the 1,499 successfully generated predicted crops, 21 had segmentation Dice values below 0.5. These observations represented approximately 1.4\% of the successfully cropped test population. Although a crop was available in each case, its underlying predicted mask had poor spatial agreement with the reference brain region.
+
+Combining these observations with the 30 empty-mask failures, 51 of the 1,529 test slices had Dice values below 0.5. Of these, 30 had no predicted crop, whereas 21 had a technically successful crop despite poor localization. The corresponding outcome counts are summarized in Table~\ref{tab:roi_low_dice}.
+
+\begin{table}[htbp]
+\centering
+\caption{Relationship between predicted-crop availability and low segmentation overlap in the 1,529-slice test population. The low-Dice groups are subdivisions of the total, not additional observations.}
+\label{tab:roi_low_dice}
+\begin{tabular}{lr}
+\hline
+Outcome & Slices \\
+\hline
+Predicted crop successfully generated & 1,499 \\
+Predicted crop unavailable (empty mask) & 30 \\
+Successful crop with Dice below 0.5 & 21 \\
+All test slices with Dice below 0.5 & 51 \\
+\hline
+\end{tabular}
+\end{table}
+
+The distinction is relevant because crop availability alone would classify the 21 low-overlap examples as successful. A crop-success indicator therefore captures whether a classifier input can be produced, but not whether that input contains the intended anatomical region.
+
+The crop metadata also showed a difference between training, validation, and test populations. Mean Dice among successfully generated predicted crops was approximately 0.9631 for training, 0.9609 for validation, and 0.9443 for testing. These descriptive values suggest greater localization variability in the test population, although differences between the partition compositions prevent a direct causal interpretation.
+
+These findings demonstrate that ROI reliability requires assessment of both mask availability and segmentation overlap. A non-empty mask may allow the pipeline to continue while still producing a crop that poorly represents the fetal brain.
+
 \subsection{Qualitative Crop and Classification Failure Cases}
+\label{subsec:results_crop_qualitative}
+
+The selected MRI examples provide visual evidence of the distinction between successful segmentation, inaccurate localization, and complete crop failure. The revised qualitative panel contains original MRI slices, reference and predicted segmentation masks, and corresponding crop representations, with identifiers linking each example to its evaluation metadata.
+
+Two examples from the good-labelled subject \texttt{fetus9\_nz} illustrate relatively successful localization. Dynamic 13, slice 19, achieved a Dice coefficient of 0.9913, indicating close agreement between the reference and predicted masks. Dynamic 20, slice 11, achieved a Dice coefficient of 0.8996 and retained a usable predicted crop despite lower segmentation overlap.
+
+The artifact-positive example from \texttt{mibirth014701\_nz}, dynamic 20, slice 15, illustrates a different outcome. Its predicted segmentation had a Dice coefficient close to zero, yet a predicted crop was generated. This demonstrates how a non-empty but anatomically inaccurate segmentation mask can pass the technical crop-generation condition.
+
+In contrast, \texttt{mibirth013901\_nz}, dynamic 15, slice 20, had a near-zero Dice coefficient and no usable predicted crop. This example represents an explicit interruption of the automatic ROI-generation stage caused by a missing predicted brain region.
+
+% FIGURE PENDING: R09_revised_identified.pdf (actual, correctly identified MRI/mask/crop example panel).
+
+These examples demonstrate two different error mechanisms. An empty predicted mask prevents the classifier from receiving a predicted crop, whereas an inaccurately localized but non-empty mask may still yield a classifier input with unsuitable anatomical content.
+
+The recovered data establish that both mechanisms occurred, but they do not independently quantify the causal effect of segmentation error on individual classification predictions. In particular, the oracle- and predicted-crop classifiers were trained separately, and differences between their predictions cannot be attributed solely to the quality of the predicted segmentation.
+
+The main reliability limitation of the 2D ROI stage was therefore not restricted to the 30 unavailable test crops. Additional cases had sufficiently poor spatial agreement that crop availability alone overstated anatomical localization quality. These results support treating mask-generation failure and inaccurate but successful cropping as distinct outcomes when interpreting the end-to-end artifact-classification pipeline.
 
 \section{Matched Comparison of the 3D and 2D Pipelines}
 \subsection{Matched Dynamic-Level Evaluation Cohort}

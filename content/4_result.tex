@@ -182,9 +182,81 @@ For the later nnU-Net pipeline, the recovered materials established that predict
 The available 3D segmentation results consequently provide evidence of model-development progress and the implementation of volumetric brain localization, but do not establish independently verified segmentation generalization for the final nnU-Net component. The implications for downstream artifact classification are examined using the available 3D classifier predictions and pipeline records in the following sections.
 
 \section{Three-Dimensional Artifact Classification Results}
+\label{sec:results_3d_classification}
+
+Following volumetric brain localization, the 3D pipeline employed a residual convolutional neural network to classify diffusion dynamics as good quality or artifact-positive. The recovered experimental records included a 600-dynamic classifier dataset and an associated prediction export containing continuous artifact probabilities and binary decisions. This section presents the documented classifier configuration, the results reconstructed from those records, and the observed classification errors. Because the independence of the prediction population from model training has not been established, the reconstructed performance is distinguished from a verified held-out test evaluation.
+
 \subsection{Model Training and Selection}
+\label{subsec:results_3d_model_selection}
+
+The final volumetric classification approach used a custom three-dimensional ResNet architecture operating on cropped MRI volumes. The corresponding training implementation comprised an initial convolutional feature-extraction stage, residual blocks, global average pooling, and a binary classification output. The saved training script specified class-imbalance handling through weighted sampling and a focal-loss objective, together with checkpoint selection based on artifact-class F1-score.
+
+The recorded implementation specified 40 training epochs and a stratified random division of dynamic-level records into training and validation populations. The split procedure did not explicitly group observations by subject. Therefore, different dynamics from the same fetus could occur in both partitions, limiting the extent to which validation performance could be interpreted as generalization to previously unseen subjects.
+
+The recovered classifier metadata contained 600 eligible dynamics from 35 subjects, comprising 508 good-quality and 92 artifact-positive observations. This corresponded to an artifact-positive proportion of 15.3\%. The imbalance between the two classes was relevant to both model optimization and the interpretation of classification accuracy.
+
+Although the training implementation and a referenced classifier checkpoint were identified, the available evidence did not establish a complete execution-linked training history, the exact selected epoch, or the subject identities used to develop the checkpoint associated with the recovered predictions. Consequently, training convergence and independent validation performance could not be reconstructed reliably. The subsequent numerical analysis was therefore restricted to the available prediction export rather than treated as an independently verified model-selection result.
+
 \subsection{Classification Performance}
+\label{subsec:results_3d_classification_metrics}
+
+The recovered ResNet prediction file contained artifact probabilities and binary classification outputs for 600 dynamics. These predictions were matched to the original classifier metadata using the recorded case identifiers, allowing comparison with the corresponding dynamic-level quality labels.
+
+Within this exported population, the classifier correctly identified all 92 artifact-positive dynamics and classified 469 of the 508 good-quality dynamics as good. The remaining 39 good-quality dynamics were classified as artifact-positive. The reconstructed confusion matrix is presented in Table~\ref{tab:3d_resnet_full_export_confusion}.
+
+\begin{table}[htbp]
+\centering
+\caption{Classification outcomes reconstructed from the complete 600-record 3D ResNet prediction export. These results have not been established as an independent held-out test evaluation.}
+\label{tab:3d_resnet_full_export_confusion}
+\begin{tabular}{lrrr}
+\hline
+Reference label & Predicted good & Predicted artifact & Total \\
+\hline
+Good & 469 & 39 & 508 \\
+Artifact-positive & 0 & 92 & 92 \\
+\hline
+Total & 469 & 131 & 600 \\
+\hline
+\end{tabular}
+\end{table}
+
+The corresponding overall accuracy was 93.5\%, with an artifact sensitivity of 100.0\% and a specificity of 92.3\%. Artifact precision was 70.2\%, while the artifact-class F1-score was 82.5\%. Table~\ref{tab:3d_resnet_full_export_metrics} summarizes these measures.
+
+\begin{table}[htbp]
+\centering
+\caption{Reconstructed classification metrics for the complete 3D ResNet prediction export.}
+\label{tab:3d_resnet_full_export_metrics}
+\begin{tabular}{lr}
+\hline
+Metric & Value \\
+\hline
+Accuracy & 93.5\% \\
+Artifact sensitivity (recall) & 100.0\% \\
+Specificity & 92.3\% \\
+Artifact precision & 70.2\% \\
+Artifact F1-score & 82.5\% \\
+\hline
+\end{tabular}
+\end{table}
+
+These measurements describe agreement between the saved predictions and the labels of all 600 exported records. They do not, by themselves, establish performance on unseen fetuses or an independently held-out test dataset. In particular, the recovered prediction file did not contain an explicit train/validation/test assignment for each evaluated dynamic. The observed sensitivity of 100.0\% must therefore be interpreted within this restricted evidential context.
+
+The earlier development presentations reported approximately 94\% classification accuracy for a volumetric approach. Although this is numerically similar to the 93.5\% accuracy reconstructed here, similarity of aggregate metrics does not establish that both results originated from the same checkpoint, evaluation population, or experimental protocol.
+
+A separate 71-dynamic dataset was recovered for the direct comparison of the 3D and 2D pipelines. That matched population is examined in Section~4.8 rather than combined with the present 600-record analysis.
+
 \subsection{Classification Errors and Observed Limitations}
+\label{subsec:results_3d_classification_errors}
+
+The complete prediction export contained 39 classification errors, all corresponding to false-positive artifact detections. No false-negative artifact classifications were recorded within this population. The false-positive observations were distributed across multiple subjects and dynamics rather than confined to a single recorded case.
+
+The predicted artifact probabilities for the misclassified good-quality dynamics included values close to the binary decision boundary as well as higher-confidence positive predictions. This indicates that the observed errors were not exclusively borderline decisions, although the available classification table alone cannot establish the underlying image characteristics responsible for them.
+
+The recovered records did not provide a verified one-to-one qualitative assessment linking each false-positive prediction to its original MRI volume and segmentation-derived crop. Accordingly, these errors cannot be attributed conclusively to fetal motion, signal variation, incorrect brain localization, or other specific imaging characteristics from the classification export alone.
+
+A further limitation concerns the independence of evaluation observations. The training implementation described a random dynamic-level split rather than an explicitly subject-disjoint partition, while the recovered prediction export covered the complete 600-record classifier dataset. Without the executed training split and checkpoint-specific evaluation history, it remains unresolved whether individual exported observations were previously encountered during model development.
+
+The results therefore demonstrate that the saved 3D ResNet predictions reproduce a high level of agreement with the available dynamic-quality annotations. However, the reconstructed full-export metrics should not be interpreted as proof of equivalent performance on independent subjects or during prospective acquisition. The matched comparison and the relationship between artifact sensitivity and false-positive decisions are examined further in Section~4.8.
 
 \section{Three-Dimensional End-to-End Pipeline Evaluation}
 \subsection{Segmentation-to-Classification Processing}

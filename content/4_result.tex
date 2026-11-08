@@ -793,8 +793,88 @@ Consequently, no quantitative sequential detection rate, number of processed sli
 The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~4.10, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
 
 \section{Computational Performance and Real-Time Feasibility}
+\label{sec:results_computational_performance}
+
+Computational performance was evaluated to assess the feasibility of automated image-quality analysis during fetal diffusion MRI acquisition. The experiments included segmentation inference benchmarks, slice-level processing measurements, prepared-volume classification timings, and an earlier offline scanner-workflow simulation. Because these measurements were obtained under different experimental conditions and processing boundaries, the results are presented separately before considering their implications for real-time operation.
+
 \subsection{Two-Dimensional Inference Latency}
+\label{subsec:results_2d_latency}
+
+The MobileNetV3-U-Net segmentation model was evaluated using a batch-size-one inference benchmark on an NVIDIA RTX PRO 6000 Blackwell Server Edition GPU partition (MIG 1g.24gb). The recovered benchmark records specified 50 warm-up iterations and 200 measured iterations, with automatic mixed precision enabled.
+
+One recorded run achieved a mean segmentation inference time of 2.759\,ms per slice, with a median of 2.758\,ms and a 95th percentile of 2.776\,ms. A second recovered run reported a mean of 2.748\,ms, a median of 2.747\,ms, and a 95th percentile of 2.758\,ms. These measurements were limited to segmentation inference and did not represent the complete segmentation-to-classification process.
+
+A separate September 2026 benchmark reported processing times for the individual stages of the 2D pipeline. The reported mean times were 0.472\,ms for segmentation preprocessing, 2.302\,ms for MobileNetV3-U-Net inference, 0.312\,ms for crop preprocessing, and 2.148\,ms for EfficientNet-B0 inference. The presentation reported a successful-slice processing time of 5.239\,ms and a separate dynamic-aggregation time of 0.048\,ms.
+
+\begin{table}[htbp]
+\centering
+\caption{Reported processing times for individual stages of the 2D pipeline in the September evaluation. The reported total was not independently reconstructed from the available per-slice output.}
+\label{tab:results_2d_stage_latency}
+\begin{tabular}{lr}
+\hline
+Processing stage & Reported mean time \\
+\hline
+Segmentation preprocessing & 0.472\,ms \\
+MobileNetV3-U-Net inference & 2.302\,ms \\
+Brain-crop preprocessing & 0.312\,ms \\
+EfficientNet-B0 inference & 2.148\,ms \\
+Successful-slice processing & 5.239\,ms \\
+Dynamic aggregation & 0.048\,ms \\
+\hline
+\end{tabular}
+\end{table}
+
+The four reported preprocessing and inference components sum to 5.234\,ms, differing slightly from the displayed successful-slice total of 5.239\,ms. The presentation also contained a separately reported total of 5.257\,ms, which could not be reconciled directly with the component means or the additional aggregation measurement. The original timing script was recovered, but the corresponding complete per-slice timing output was not available for independent recalculation. These values are therefore retained as reported measurements rather than combined into a reconstructed end-to-end estimate.
+
+The difference between the 2.302\,ms segmentation inference time reported in September and the approximately 2.75\,ms measurements in the recovered batch-size-one benchmark also indicates that the two experiments should not be treated as identical. The exact correspondence between their execution conditions and model configurations could not be established.
+
+An earlier estimate of 0.541\,ms per slice was obtained from batch-throughput measurements using a batch size of 32. This value represents average throughput-derived processing cost and is not equivalent to sequential single-slice inference latency. Accordingly, it was not used as the principal estimate of latency for processing a newly available MRI slice.
+
+The recorded 5.239\,ms successful-slice timing provides evidence that the 2D segmentation and classification stages can be executed with low computational latency under the reported benchmark conditions. However, this figure does not include the complete scanner-to-decision workflow and is conditional on successful processing of the slice.
+
 \subsection{Three-Dimensional Processing Latency}
+\label{subsec:results_3d_latency}
+
+The computational evaluation of the 3D pipeline involved two distinct measurement scopes: classification using an already prepared volumetric brain crop and the earlier complete segmentation-to-classification workflow.
+
+The September 2026 presentation reported a mean processing time of 5.901\,ms per volume for the prepared-crop 3D ResNet classification path. This measurement included the processing associated with the prepared classifier input and ResNet inference, but excluded nnU-Net brain segmentation and the generation of the original brain-region crop. It therefore represented a downstream classification-stage measurement rather than complete volumetric quality-assessment latency.
+
+The earlier scanner-workflow simulation reported substantially longer processing times. The June 2026 update described approximately 15--25 seconds per scan, with nnU-Net segmentation identified as the principal computational bottleneck. The September presentation separately referred to historical full-pipeline processing times of approximately 17--20 seconds per volume.
+
+These reported ranges are broadly consistent with a workflow in which volumetric segmentation contributes substantially more processing time than classification on an already prepared crop. Nevertheless, the available records do not establish that both historical reports used the same hardware, model versions, input dimensions, or measurement boundaries.
+
+The recovered HPC evidence also did not provide a complete execution-linked timing table for the final nnU-Net segmentation, volumetric preprocessing, crop extraction, and ResNet classification stages. As a result, a reproducible mean or percentile latency for the complete final 3D pipeline could not be calculated from the available records.
+
 \subsection{Processing-Time Comparison and Feasibility}
+\label{subsec:results_latency_comparison}
+
+The principal timing observations are summarized in Table~\ref{tab:results_runtime_scope}, with their measurement boundaries explicitly distinguished.
+
+\begin{table}[htbp]
+\centering
+\caption{Available computational performance evidence for the 2D and 3D pipelines. Measurement boundaries differ and do not permit a direct end-to-end speed ranking.}
+\label{tab:results_runtime_scope}
+\begin{tabular}{p{0.27\textwidth}p{0.20\textwidth}p{0.40\textwidth}}
+\hline
+Experiment & Processing time & Measurement scope \\
+\hline
+2D segmentation, batch size 1 & 2.748--2.759\,ms/slice & Segmentation inference only; two recovered runs \\
+2D successful-slice pipeline & 5.239\,ms/slice & Reported preprocessing, segmentation, cropping and classification \\
+3D prepared-crop classification & 5.901\,ms/volume & Prepared-volume classification; nnU-Net segmentation excluded \\
+Historical 3D scanner simulation, June & Approx.\ 15--25\,s/scan & Earlier offline volume-processing workflow \\
+Historical 3D scanner simulation, September & Approx.\ 17--20\,s/volume & Historical full-pipeline report; version match unverified \\
+\hline
+\end{tabular}
+\end{table}
+
+The measurements demonstrate that the neural-network inference stages can operate substantially faster than the complete historical volumetric processing workflow. However, a direct comparison between the 5.239\,ms 2D measurement and the 5.901\,ms 3D measurement would be misleading because the former includes several slice-processing stages whereas the latter begins with an already prepared volumetric crop.
+
+Similarly, the reported 2D per-slice time cannot be directly compared with the historical 3D processing time per volume. A complete 2D dynamic would require repeated slice processing, management of segmentation or crop failures, aggregation of the available predictions, and any additional data-loading or acquisition-related operations. The timing records did not establish a complete measured elapsed time from the arrival of a diffusion dynamic to its final quality decision under the same conditions used for the 3D pipeline.
+
+The September presentation included illustrative calculations for sequentially processing 18 or 32 slices using the reported average 2D slice time. These calculations indicated the potential computational benefit of processing fewer slices, but they were arithmetic projections rather than measurements of a functioning early-stopping experiment. They therefore do not establish an observed reduction in time to artifact detection.
+
+The available results suggest that the 2D processing strategy is computationally promising for time-sensitive quality assessment. Nevertheless, computational feasibility alone does not establish reliable real-time artifact detection. The classification results in Sections~4.6 and~4.9 demonstrate that sensitivity depends strongly on the chosen decision rule, while the segmentation and ROI analyses identify additional failure conditions that must be considered in an operational system.
+
+Furthermore, the project did not demonstrate prospective integration with the MRI acquisition controller, acquisition-time artifact detection, or automated reacquisition of corrupted diffusion dynamics. The recorded evidence therefore supports offline inference feasibility and preliminary computational assessment, but not a verified end-to-end scanner-integrated real-time deployment.
 
 \section{Summary of Experimental Findings}

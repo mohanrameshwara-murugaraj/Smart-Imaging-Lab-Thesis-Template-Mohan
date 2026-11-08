@@ -682,10 +682,115 @@ The provenance of the final 2D aggregation rule within the 71-dynamic experiment
 Consequently, the matched comparison establishes the observed difference between the recorded pipeline decisions: higher artifact sensitivity but more false positives for the 3D classifier, and higher specificity but more missed artifacts for the 2D failure-aware approach. It does not establish that either pipeline would retain the same performance on an independently collected prospective dataset. The broader dynamic-level decision experiments and the influence of failure-aware aggregation are examined in Section~4.9.
 
 \section{Dynamic-Level Aggregation and Decision Analysis}
+\label{sec:results_dynamic_decisions}
+
+The two-dimensional artifact-classification framework generated predictions for individual MRI slices, whereas the original quality annotations were assigned to complete diffusion dynamics. A subsequent evaluation therefore examined the aggregation of slice-level probabilities into dynamic-level quality decisions. In addition to the original aggregation output, two failure-aware policies were evaluated to determine how unsuccessful brain segmentation and crop generation affected the final decisions.
+
+The recovered results included individual predictions for 88 test dynamics and a separate validation-based search over aggregation methods and decision thresholds. These experiments are presented separately from the matched 71-dynamic 3D-versus-2D comparison described in Section~4.8.
+
 \subsection{Dynamic-Level Aggregation Performance}
+\label{subsec:results_dynamic_aggregation}
+
+The dynamic-level test evaluation comprised 88 diffusion dynamics from four held-out subjects. Of these, 70 were annotated as good quality and 18 as artifact-positive. Slice-level artifact probabilities were combined to obtain one score or decision per dynamic.
+
+The original recorded dynamic-level decision rule correctly classified 66 of the 70 good-quality dynamics and three of the 18 artifact-positive dynamics. The remaining predictions comprised four false positives and 15 false negatives. The resulting accuracy was 78.4\%, artifact sensitivity was 16.7\%, specificity was 94.3\%, precision was 42.9\%, and F1-score was 24.0\%.
+
+These results are summarized in Table~\ref{tab:results_original_dynamic}.
+
+\begin{table}[htbp]
+\centering
+\caption{Original 2D dynamic-level classification outcomes on the 88-dynamic test population.}
+\label{tab:results_original_dynamic}
+\begin{tabular}{lr}
+\hline
+Classification outcome & Number \\
+\hline
+True negatives & 66 \\
+False positives & 4 \\
+False negatives & 15 \\
+True positives & 3 \\
+\hline
+Total dynamics & 88 \\
+\hline
+\end{tabular}
+\end{table}
+
+The original aggregation achieved relatively high specificity but failed to identify most artifact-positive dynamics. Consequently, its overall accuracy substantially exceeded its artifact sensitivity. This difference demonstrates the limitations of evaluating dynamic-level artifact detection using accuracy alone in a population containing considerably more good-quality than artifact-positive acquisitions.
+
+The recovered scores yielded a ROC-AUC of 0.6944 and an average precision of 0.3637. These measures describe discrimination across score thresholds; they do not imply that the recorded binary decision threshold achieved comparable artifact sensitivity.
+
+An additional validation-based threshold search examined mean, median, maximum, and top-$k$ aggregation strategies. The recorded search included top-two, top-three, and top-five probability averages, combined with different binary thresholds and optional segmentation-failure criteria. These experiments demonstrated that the final classification outcomes depended on both the aggregation operator and its selected operating threshold.
+
+% FIGURE PENDING: R07 original 88-dynamic confusion matrix and/or R06 score distribution.
+% Source figures require insertion and scientific captions.
+
 \subsection{Failure-Aware Decision Policies}
-% Retain the following subsection only if an executed sequential experiment is verified.
-\subsection{Sequential Decision Experiments, Where Available}
+\label{subsec:results_failure_aware_policies}
+
+To incorporate failures occurring before classification, an additional decision framework combined the aggregated artifact score with the number of slices for which a predicted crop was unavailable.
+
+The recovered implementation assigned an artifact-positive dynamic decision if either the aggregated classifier score met or exceeded its configured threshold or the number of failed slice crops reached a specified failure threshold. The failure indicator was based on crop or classifier availability, rather than on segmentation Dice, which would require reference brain masks unavailable during deployment.
+
+Two configurations were retained in the experiment: a balanced configuration and a recall-oriented configuration.
+
+The balanced configuration used median aggregation, a probability threshold of 0.93, and a failure threshold of one unavailable crop. The recorded script selected this configuration by maximizing validation F1-score, with recall, specificity, and precision used as tie-breaking criteria.
+
+The recall-oriented configuration used the mean of the five highest available slice probabilities, a probability threshold of 0.98, and the same one-crop failure threshold. Its documented selection procedure prioritized validation recall among configurations satisfying a minimum specificity of 0.85.
+
+The validation dataset contained 86 dynamics, including 80 good-quality and six artifact-positive observations. The selected balanced configuration achieved four true positives, two false negatives, two false positives, and 78 true negatives on that validation population, corresponding to an F1-score of 66.7\%.
+
+When evaluated on the separate 88-dynamic test population, the balanced configuration correctly identified 12 of the 18 artifact-positive dynamics and 66 of the 70 good-quality dynamics. The corresponding sensitivity was 66.7\%, specificity was 94.3\%, precision was 75.0\%, F1-score was 70.6\%, and accuracy was 88.6\%.
+
+The recall-oriented configuration also identified 12 artifact-positive dynamics but generated ten false-positive decisions. Its sensitivity was therefore likewise 66.7\%, while specificity decreased to 85.7\%, precision to 54.5\%, and F1-score to 60.0\%.
+
+The results are summarized in Table~\ref{tab:results_failure_aware_policies}.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of recorded 2D dynamic-level decision policies on the same 88 test dynamics. The failure-aware rules use missing predicted crops, not reference-mask Dice scores, as an additional decision signal.}
+\label{tab:results_failure_aware_policies}
+\begin{tabular}{lrrr}
+\hline
+Metric & Original rule & Balanced & Recall-oriented \\
+\hline
+True positives & 3 & 12 & 12 \\
+False negatives & 15 & 6 & 6 \\
+False positives & 4 & 4 & 10 \\
+True negatives & 66 & 66 & 60 \\
+Accuracy & 78.4\% & 88.6\% & 81.8\% \\
+Artifact sensitivity & 16.7\% & 66.7\% & 66.7\% \\
+Specificity & 94.3\% & 94.3\% & 85.7\% \\
+Precision & 42.9\% & 75.0\% & 54.5\% \\
+F1-score & 24.0\% & 70.6\% & 60.0\% \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURE PENDING: R08 original/balanced/recall-oriented policy comparison.
+% Include the original 88-dynamic denominator and document the decision thresholds.
+
+Relative to the original decision rule, the balanced configuration identified nine additional artifact-positive dynamics without increasing the total number of false-positive decisions in the recorded test population. This increased artifact sensitivity from 16.7\% to 66.7\% and F1-score from 24.0\% to 70.6\%.
+
+Examination of the balanced policy's individual predictions showed that ten of its 12 true-positive decisions were triggered by the segmentation-failure criterion, while two were triggered by the classifier-score criterion. Of the four false-positive decisions, two were associated with segmentation failure and two with the classifier threshold. The two decision criteria therefore contributed differently to artifact detection and false alarms.
+
+The recall-oriented policy identified the same number of artifact-positive dynamics but produced six additional false positives compared with the balanced policy. Although it was designed to prioritize sensitivity, no additional true-positive detections were observed on this test population.
+
+These findings demonstrate that incorporating crop-generation failure materially changed the recorded dynamic-level classification outcomes. However, they do not establish that segmentation failure is itself a reliable artifact detector in a broader population. A failed brain crop may be associated with poor image quality, but it may also arise from model limitations unrelated to a clinically relevant artifact.
+
+The recovered script documents a validation-based parameter search followed by application of selected configurations to the test set. Nevertheless, the available evidence does not independently establish that every recorded output was generated without later manual adjustment or that the same test population was never consulted during development. Furthermore, the validation population contained only six artifact-positive dynamics, limiting confidence in the stability of the selected operating thresholds.
+
+The balanced policy therefore represents the strongest recorded operating point among the three evaluated decision rules on this test population, but the observed improvement should not be interpreted as definitive evidence of generalization to independent future acquisitions.
+
+\subsection{Sequential Decision Experiments}
+\label{subsec:results_sequential_status}
+
+The broader research objective considered the possibility of examining slices sequentially and identifying artifact-positive dynamics before all slices had been processed. Such an approach would require an ordered sequence of slice-level inference results, a defined stopping condition, and a measurable first-decision position.
+
+The recovered evidence established retrospective slice-to-dynamic aggregation and the application of failure-aware policies after the available slice predictions had been assembled. However, it did not provide a verified experiment documenting first-trigger slice indices, decisions made using only the preceding slices, or measured processing time saved through early stopping.
+
+Consequently, no quantitative sequential detection rate, number of processed slices before stopping, or latency reduction attributable to an early-decision rule can be reported from the available evidence.
+
+The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~4.10, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
 
 \section{Computational Performance and Real-Time Feasibility}
 \subsection{Two-Dimensional Inference Latency}

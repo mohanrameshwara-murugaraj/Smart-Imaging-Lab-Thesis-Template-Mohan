@@ -12,7 +12,7 @@ The accompanying quality annotation table contained 38 case records, each compri
 
 The available MRI volumes and their corresponding reference masks formed the basis for the initial three-dimensional experiments and the subsequent two-dimensional processing framework. For the later two-dimensional experiments, a cohort of 24 subject folders was used, comprising 16 training, four validation, and four test subjects. The imaging data were further prepared into individual slices while retaining their original subject and dynamic associations. The preparation of the volumetric data and the subsequent two-dimensional dataset is described in the following sections.
 
-\section{Data Preparation for Three-Dimensional Analysis}\label{sec:data-preparation}
+\section{Data Preparation and Experimental Partitioning}\label{sec:data-preparation}
 
 \subsection{Three-Dimensional MRI and Reference Mask Preparation}
 
@@ -66,7 +66,8 @@ The extracted features were combined into a five-dimensional feature vector for 
 
 The initial Random Forest experiment was conducted using a small set of extracted feature vectors. Four feature records were available in the documented experiment, of which three were assigned to training and one to testing. This preliminary implementation was intended to investigate whether basic intensity and crop-size characteristics could distinguish artifact-corrupted dynamics from good acquisitions.
 
-\subsection{nnU-Net Segmentation and 3D CNN Classification}
+\section{Developed 3D Artifact-Detection Pipeline}
+\subsection{nnU-Net v2 Segmentation, Brain Cropping, and 3D ResNet Classification}
 
 Following the initial three-dimensional experiments, a second volumetric approach was developed by combining nnU-Net-based fetal brain segmentation with a three-dimensional convolutional neural network (3D CNN) for artifact classification. The framework consisted of two consecutive stages: automatic localization of the fetal brain within each diffusion MRI dynamic and classification of the extracted brain region according to its image quality.
 
@@ -80,9 +81,17 @@ Following the residual stages, adaptive average pooling reduced the spatial feat
 
 The segmentation and classification stages were integrated into a sequential inference procedure, allowing each three-dimensional diffusion MRI dynamic to be processed from brain localization to artifact prediction. The implementation also included handling of unsuccessful brain localization, although the response to an empty predicted segmentation differed between archived versions of the pipeline.
 
-\section{Data Preparation for Two-Dimensional Analysis}
+\section{Motivation for Slice-Wise Artifact Detection}
+% STRUCTURAL PLACEHOLDER: Explain complete-volume decision latency,
+% the 3D-to-2D research transition, and the requirements for sequential QC.
+\subsection{Limitations of Complete-Volume Processing for Early Feedback}
+\subsection{Transition from 3D Dynamics to 2D Slices}
+\subsection{Design Requirements for the 2D Framework}
 
-\subsection{Conversion of Three-Dimensional MRI Volumes into Two-Dimensional Slices}
+\section{Developed 2D Artifact-Detection Pipeline}
+\subsection{Slice Extraction and Preprocessing}
+
+\subsubsection{Conversion of Three-Dimensional MRI Volumes into Two-Dimensional Slices}
 
 The original fetal diffusion MRI data consisted of three-dimensional image volumes, with each dynamic accompanied by a corresponding reference brain segmentation mask. For the development of the two-dimensional segmentation and artifact classification framework, these volumes were converted into individual two-dimensional slices. Each MRI dynamic and its corresponding brain mask were processed along the same spatial axis, preserving the anatomical correspondence between the extracted images and reference segmentations.
 
@@ -90,7 +99,7 @@ The MRI volumes were loaded in NIfTI format using NiBabel. The through-plane dim
 
 This process transformed each three-dimensional MRI dynamic into a sequence of two-dimensional images with corresponding reference brain masks. The original subject, dynamic, and slice associations were retained to support subsequent segmentation training and dynamic-level quality assessment. Further preprocessing, including image normalization, resizing, and selection of relevant slices, was performed according to the requirements of the segmentation and classification models and is described in the following subsections.
 
-\subsection{Image Normalization and Resizing}
+\subsubsection{Image Normalization and Resizing}
 
 The extracted two-dimensional fetal diffusion MRI slices underwent intensity normalization and spatial resizing to provide consistent inputs for brain segmentation and artifact classification. Since MRI signal intensities vary across acquisitions and diffusion-weighting conditions, a percentile-based normalization procedure was applied to reduce the influence of extreme intensity values while retaining the relative intensity distribution within each image.
 
@@ -100,7 +109,7 @@ Following normalization, the MRI slices were resized to $160 \times 160$ pixels 
 
 For artifact classification, brain-centered regions of interest were extracted from the original two-dimensional MRI slices using either the reference brain masks or the predicted segmentations. The extracted regions underwent a separate crop-normalization procedure and were resized to $224 \times 224$ pixels using bilinear interpolation. The resulting single-channel images were stored in 32-bit floating-point format, with intensity values constrained to $[0,1]$ before classification. This provided a standardized input representation for the EfficientNet-B0 classifier while restricting the analyzed image region to the localized fetal brain.
 
-\subsection{Artifact Labeling and Slice Selection}
+\subsubsection{Artifact Labeling and Slice Selection}
 
 The original fetal diffusion MRI dataset contained image-quality annotations assigned at the dynamic level, indicating whether each three-dimensional acquisition was considered good (0), artifact-corrupted (1), or uncertain ($-1$). For the two-dimensional artifact classification framework, these annotations were associated with the extracted image slices using their corresponding subject and dynamic identifiers. Dynamics with uncertain quality annotations were excluded from binary classification, leaving only acquisitions with known good or artifact labels.
 
@@ -110,7 +119,7 @@ Since the original artifact annotations described the quality of complete MRI dy
 
 The resulting classification dataset comprised 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. These labels represented the quality of the source dynamics and were therefore treated as weak slice-level annotations rather than independently verified spatial artifact labels.
 
-\subsection{Dataset Partitioning}
+\subsubsection{Dataset Partitioning}
 
 The two-dimensional fetal diffusion MRI dataset was partitioned into training, validation, and test subsets at the subject level. Since each subject contributed multiple diffusion MRI dynamics and each dynamic contained several image slices, subject-level partitioning was applied to prevent images from the same subject appearing in different subsets. This separation reduced the risk of data leakage caused by anatomical similarities and dependencies between repeated acquisitions from the same subject.
 
@@ -120,9 +129,9 @@ For brain segmentation, the training dataset contained 9,264 prepared slices, in
 
 For artifact classification, an additional selection procedure restricted the data to brain-containing slices within the predefined slice range. This resulted in 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. The same subject-level separation was maintained across the segmentation and classification experiments.
 
-\section{Two-Dimensional Fetal Brain Segmentation}
+\subsection{MobileNetV3-U-Net Fetal Brain Segmentation}
 
-\subsection{Network Architecture}
+\subsubsection{Network Architecture}
 
 A two-dimensional segmentation network combining MobileNetV3-Large with a U-Net-based decoder was developed for automated fetal brain localization in diffusion MRI slices. The architecture employed MobileNetV3-Large as the encoder to extract hierarchical image features, while a custom decoder reconstructed the spatial information required for pixel-wise brain segmentation. The network processed single-channel grayscale MRI images of $160 \times 160$ pixels and produced a corresponding segmentation map identifying the fetal brain region. The proposed architecture is illustrated in Figure~\ref{fig:mobilenetv3_unet_architecture}.
 
@@ -148,7 +157,7 @@ The complete single-slice segmentation procedure is illustrated in Figure~\ref{f
 \label{fig:single_slice_segmentation_workflow}
 \end{figure}
 
-\subsection{Network Training}
+\subsubsection{Network Training}
 
 The MobileNetV3-Large U-Net was trained using two-dimensional fetal diffusion MRI slices and their corresponding reference brain masks. The training dataset included slices containing fetal brain tissue and a subset of background-only slices to improve the network's ability to distinguish the brain from surrounding maternal and fetal anatomy. All brain-containing training slices were retained, while 25\% of the available background-only slices were sampled for inclusion. The subject-independent validation dataset was used to monitor segmentation performance and select the best-performing model.
 
@@ -166,7 +175,7 @@ The network was trained using the AdamW optimizer with an initial learning rate 
 
 After each epoch, segmentation performance was assessed on the validation dataset using the Dice similarity coefficient. The model parameters were saved whenever validation Dice improved, and early stopping was applied after 12 consecutive epochs without improvement. The checkpoint achieving the highest validation Dice was selected for subsequent inference and evaluation on the held-out test dataset.
 
-\subsection{Segmentation Inference}
+\subsubsection{Segmentation Inference}
 
 Following network training, the checkpoint achieving the highest validation Dice similarity coefficient was selected for fetal brain segmentation on unseen two-dimensional diffusion MRI slices. During inference, the trained MobileNetV3-Large U-Net was initialized with its saved model parameters and placed in evaluation mode. Predictions were generated without gradient computation to reduce computational overhead.
 
@@ -188,9 +197,9 @@ Pixels exceeding the threshold were classified as fetal brain foreground, while 
 
 The resulting segmentation masks were used to localize the fetal brain independently within each MRI slice. Foreground pixels provided the spatial coordinates required for brain bounding-box extraction and subsequent region-of-interest cropping. When a predicted mask contained no foreground pixels, the brain region could not be localized and the corresponding slice was identified as a segmentation failure. These failures were recorded separately from successfully segmented slices and considered during downstream artifact classification and dynamic-level quality assessment.
 
-\section{Brain Region-of-Interest Extraction}
+\subsection{Brain Region Extraction and Cropping}
 
-\subsection{Brain Bounding-Box Extraction and Cropping}
+\subsubsection{Brain Bounding-Box Extraction and Cropping}
 
 The binary fetal brain masks obtained from two-dimensional segmentation were used to extract brain-centered regions of interest (ROIs) from the corresponding original diffusion MRI slices. Cropping retained the image intensities in the selected rectangular region, including surrounding tissue within the crop, rather than multiplying the image by the segmentation mask. This reduced the field of view presented to the artifact classifier while preserving local anatomical context.
 
@@ -203,7 +212,7 @@ The bounding box was expanded in both dimensions by these margins. A square crop
 
 The resulting intensity crop underwent the normalization operation implemented in the crop-generation procedure, followed by bilinear resizing to $224\times224$ pixels (align\_corners=False). The resulting single-channel floating-point representation was provided to the artifact classifier. A mask without foreground pixels did not yield a valid bounding box and was recorded as an unsuccessful localization rather than replaced by an arbitrary crop.
 
-\subsection{Oracle and Predicted Mask-Based Crops}
+\subsubsection{Oracle and Predicted Mask-Based Crops}
 
 Two ROI-generation conditions were used to investigate the effect of brain localization on subsequent classification. In the oracle condition, the reference fetal brain segmentation mask supplied the bounding-box coordinates. In the predicted condition, the mask generated by the trained MobileNetV3-Large U-Net supplied the coordinates. Both conditions used the same square-crop construction, margin, padding, normalization, and resizing procedure.
 
@@ -211,9 +220,9 @@ The term \emph{oracle} denotes reference-mask-assisted localization, not perfect
 
 The original slice identity, dynamic identifier, and subject identity were retained so that corresponding oracle and predicted crops could be compared. In the documented test classification population, 1,529 slices were eligible for reference-mask crops, whereas 1,499 yielded predicted-mask crops and 30 had no usable predicted crop. These counts describe input availability; they do not establish the classification accuracy of either cropping condition.
 
-\section{Artifact Classification}
+\subsection{EfficientNet-B0 Artifact Classification}
 
-\subsection{EfficientNet-B0 Network Architecture}
+\subsubsection{EfficientNet-B0 Network Architecture}
 
 Artifact classification was performed using EfficientNet-B0, a compact convolutional neural network adapted for two-class prediction from brain-centered fetal diffusion MRI slices. The model accepted a single grayscale crop of $224\times224$ pixels. The input images were represented as floating-point arrays, with nonfinite values replaced and intensity values constrained to $[0,1]$ before model inference.
 
@@ -221,7 +230,7 @@ The implementation used the EfficientNet-B0 feature extractor from torchvision. 
 
 The model produced logits for the Good (class 0) and Artifact (class 1) categories. A softmax operation converted these logits to class probabilities, and the artifact probability was taken from the class-1 output. The classifier therefore estimated image-quality evidence from the localized brain crop rather than from a complete three-dimensional dynamic.
 
-\subsection{Classification Dataset and Training}
+\subsubsection{Classification Dataset and Training}
 
 The artifact-classification targets were inherited from quality annotations assigned to complete MRI dynamics, as described in Section~3.4.3. Each selected brain-containing slice received the Good or Artifact label of its source dynamic. This constituted weak supervision: an artifact-labeled dynamic could contribute individual slices without visually apparent corruption. The subject-separated datasets contained 6,078 training slices (4,996 Good and 1,082 Artifact), 1,506 validation slices (1,405 Good and 101 Artifact), and 1,529 test slices (1,258 Good and 271 Artifact) before exclusion of unsuccessful predicted crops.
 
@@ -229,7 +238,7 @@ Separate experimental variants used reference-mask-assisted (oracle) crops and a
 
 Additional experiments were conducted with pretrained-named oracle and predicted-crop classifiers, and a predicted-crop checkpoint was used in the sequential demonstration. The available implementation verifies that the EfficientNet-B0 builder can initialize ImageNet weights and that saved classifier checkpoints contain training metadata, but does not independently establish the exact optimization configuration or checkpoint provenance for every later variant. The early oracle configuration was therefore not assumed to apply unchanged to all experiments.
 
-\subsection{Inference and Artifact Probability Estimation}
+\subsubsection{Inference and Artifact Probability Estimation}
 
 During classification inference, each available brain-centered crop was checked for the expected $224\times224$ spatial dimensions, converted to a single-channel tensor, and passed to the trained EfficientNet-B0 in evaluation mode. Nonfinite pixel values were sanitized and crop intensities were clipped to $[0,1]$. The inference path did not replicate grayscale images into RGB channels or apply three-channel ImageNet input normalization.
 
@@ -240,9 +249,10 @@ p_{\mathrm{artifact}}=
 \end{equation}
 The continuous artifact probability was retained for subsequent thresholding and dynamic-level analysis. Class probabilities were not computed when brain localization failed to generate a usable crop. Such missing classifier outputs were tracked separately from low predicted artifact probabilities.
 
-\section{Dynamic-Level Quality Assessment}
+\section{Dynamic-Level and Sequential Quality Assessment}
+\subsection{Dynamic-Level Quality Assessment}
 
-\subsection{Slice-Probability Aggregation}
+\subsubsection{Slice-Probability Aggregation}
 
 Because quality annotations and prospective quality-control decisions refer to complete diffusion MRI dynamics, slice-level artifact probabilities were examined as inputs to dynamic-level aggregation. For a dynamic with $n$ successfully classified slices, the probabilities were denoted by $p_1,\ldots,p_n$. The evaluation considered the arithmetic mean, median, maximum, and aggregation variants labeled \texttt{top2}, \texttt{top3}, and \texttt{top5}.
 
@@ -255,7 +265,7 @@ The median represents the central value of the slice-probability distribution. T
 
 Aggregation was performed at the dynamic level so that multiple related slices were not treated as independent quality-control decisions. Slices without a valid brain crop contributed no classifier probability and required separate failure handling rather than being silently assigned an artifact score of zero.
 
-\subsection{Classification Thresholds}
+\subsubsection{Classification Thresholds}
 
 Continuous artifact scores were converted into quality-control decisions using probability thresholds. In the sequential demonstration, the user-adjustable slice-level threshold was initialized to 0.92, with a permitted range of 0.50 to 0.99. A slice triggered an artifact alert when its class-1 probability met or exceeded the selected threshold.
 
@@ -263,7 +273,7 @@ Offline dynamic-level evaluations explored several aggregation methods and candi
 
 Any chosen operating rule requires specification of the aggregation operator, the threshold, the failure policy, and the dataset used for selection. The preserved October aggregation results document an exploratory threshold sweep, but do not independently establish a final test-frozen threshold or the exact implementation semantics of each failure setting.
 
-\subsection{Segmentation Failure Handling}
+\subsubsection{Segmentation Failure Handling}
 
 A segmentation failure was identified when the predicted brain mask contained no foreground pixels and therefore could not support brain-centered crop generation. Such cases were distinguished from successful crops with inaccurate spatial localization: a nonempty mask could produce a crop despite poor overlap with the reference segmentation.
 
@@ -271,9 +281,9 @@ In the sequential quality-control demonstration, an empty mask or unusable crop 
 
 Failure-aware evaluation retained these cases in the relevant denominators. Excluding them would measure classification only among successful segmentations and could overstate the completeness of the end-to-end quality-control pipeline.
 
-\section{Sequential Quality-Control Implementation}
+\subsection{Sequential Quality-Control Implementation}
 
-\subsection{Sequential Processing Workflow}
+\subsubsection{Sequential Processing Workflow}
 
 A sequential processing demonstration was implemented to assess the operation of the two-dimensional segmentation and classification pipeline on individual diffusion MRI dynamics. The application accepted a reconstructed three-dimensional or four-dimensional NIfTI image, selected a dynamic where necessary, and iterated through a specified range of two-dimensional slices. The default selection used the third image axis and slice indices 8--25, inclusive, without additional in-plane transformation.
 
@@ -281,7 +291,7 @@ For each selected slice, the application performed segmentation normalization an
 
 The implemented workflow demonstrated decision-making from successive slice-level observations of a completed input dynamic. It did not establish that inference was executed prospectively during scanner acquisition or that the application controlled a scanner reacquisition sequence.
 
-\subsection{Early Stopping and Quality Decisions}
+\subsubsection{Early Stopping and Quality Decisions}
 
 Sequential early stopping was based on a slice-level artifact trigger and an optional localization-failure trigger. After successful crop generation, the application compared the predicted artifact probability against the selected threshold. If the threshold was reached, the dynamic was flagged for an artifact-related quality-control action and further slice processing stopped. When stop-on-failure was enabled, an empty predicted mask or failed crop similarly stopped processing with a separate failure designation.
 
@@ -289,7 +299,7 @@ If neither condition occurred, processing continued to the next selected slice. 
 
 For an ordered range beginning at slice 8, decision position was defined by the number of slices examined up to the first trigger, not by the absolute slice index. Early stopping was intended to avoid processing remaining selected slices once a trigger occurred. Any reported savings must distinguish actual measured processing time from extrapolated savings based on the number of unprocessed slices.
 
-\subsection{Computational Latency Measurement}
+\subsubsection{Computational Latency Measurement}
 
 Computational latency was investigated at the level of individual processing stages, including segmentation preprocessing, segmentation inference, ROI crop preparation, classifier inference, and dynamic-level aggregation. The preserved two-dimensional benchmark evaluated 1,529 candidate test slices; classifier inference was recorded for 1,499 slices with successful predicted crops. Stage-specific durations and successful-slice end-to-end durations were summarized using means, medians, upper percentiles, and maximum values.
 
@@ -297,7 +307,7 @@ GPU execution was used for the measured neural-network stages. The archived two-
 
 Historical three-dimensional timing records were retained as a separate measurement family because their stage boundaries and evaluation environments differed. In particular, the documented three-dimensional classifier benchmark excluded brain-crop construction and disk I/O. Consequently, classifier-only three-dimensional timings were not directly equated with the complete two-dimensional segmentation-to-classification path.
 
-\section{Experimental Setup and Evaluation Protocol}
+\section{Experimental Design and Evaluation Protocol}
 \label{sec:experimental-evaluation}
 
 The experimental protocol assessed fetal brain segmentation, slice-level artifact classification, dynamic-level quality-control decisions, and computational performance. Three-dimensional methods developed during the initial phase were considered alongside the subsequent two-dimensional segmentation and classification framework. These analyses were distinguished by their prediction targets: segmentation was compared with spatial brain masks, slice classification with dynamic-derived weak quality labels, and dynamic-level decisions with acquisition-level quality annotations.

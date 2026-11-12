@@ -208,26 +208,19 @@
 % BIBLIOGRAPHY
 % ##################################################
 \usepackage{csquotes}
-\RequirePackage[backend=biber,
-sorting=nyt,
-style=authoryear,
-sortcites=true,
-maxcitenames=2,
-mincitenames=1,
-maxbibnames=100,
-date=year,
-url=false,
-urldate=long,
-isbn=false,
-firstinits=true,
-doi=false,
-terseinits=false,
-autocite=inline,
-uniquename=false,
-dashed=false,
-uniquelist=false,
-block=none, 
-hyperref=true, 
+\RequirePackage[
+    backend=biber,
+    style=alphabetic,
+    sorting=nyt,
+    sortcites=true,
+    backref=true,
+    backrefstyle=three,
+    doi=true,
+    url=true,
+    isbn=false,
+    giveninits=true,
+    maxbibnames=100,
+    hyperref=true
 ]{biblatex}
 
 % \usepackage[backend=biber,citestyle=misq]{biblatex}

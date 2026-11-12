@@ -64,6 +64,34 @@ The original research proposal additionally identified evaluation across acquisi
 Together, these objectives establish a framework for investigating the performance, reliability, and practical limitations of volumetric and slice-wise artifact-detection methods in fetal diffusion MRI.
 
 \section{Main Contributions}
-% TODO: Cover the 3D and 2D pipelines with equal scientific care.
+
+This thesis contributes to the investigation of automated artifact detection in low-field fetal diffusion MRI through the development and experimental evaluation of two deep learning-based processing pipelines. Building upon the research motivation of existing fetal MRI quality-control frameworks, the work examines volumetric and slice-wise approaches to fetal-brain localization and image-quality classification. Particular attention is given to the influence of image representation, segmentation reliability, annotation limitations, and computational requirements on artifact detection.
+
+The main contributions of this work are summarized as follows:
+
+\begin{enumerate}
+    \item \textbf{Development and evaluation of a volumetric artifact-detection pipeline.}
+
+    A three-dimensional processing framework was developed by combining nnU-Net v2 for automatic fetal-brain segmentation with a 3D ResNet classifier for identifying artifact-corrupted diffusion dynamics. The framework incorporates volumetric brain-region extraction and dynamic-level quality classification. Its development was preceded by preliminary experiments involving custom 3D U-Net segmentation, handcrafted image features, and Random Forest classification. The resulting pipeline was evaluated to investigate the capabilities and limitations of artifact detection using complete diffusion volumes.
+
+    \item \textbf{Development and evaluation of a slice-wise artifact-detection pipeline.}
+
+    A complementary two-dimensional framework was developed using MobileNetV3-U-Net for fetal-brain segmentation and EfficientNet-B0 for artifact classification. The approach processes individual diffusion MRI slices and extracts brain-centered regions before classification. Its evaluation includes segmentation performance, classification reliability, and the influence of reference-mask and predicted-mask cropping. This provides an experimental basis for examining artifact detection when classification is performed using individual slices rather than complete volumes.
+
+    \item \textbf{Investigation of segmentation reliability and its influence on artifact classification.}
+
+    Both pipelines incorporate automatic fetal-brain localization as an essential processing stage. The research evaluates the relationship between segmentation quality, brain-region extraction, and subsequent artifact classification. In particular, the 2D experiments examine unsuccessful crop generation, differences between reference and predicted brain regions, and the effects of segmentation failures on classification decisions. The investigation also considers the limitations introduced when dynamic-level artifact annotations are used as slice-level classification targets.
+
+    \item \textbf{Evaluation of dynamic-level decision strategies and comparison of the two processing approaches.}
+
+    The research investigates methods for combining individual-slice artifact predictions into a quality decision for an entire diffusion dynamic. Different prediction aggregation strategies, classification thresholds, and segmentation-failure-aware decision rules are examined. A matched experimental comparison of the 3D and 2D pipelines is also conducted to investigate differences in artifact-detection behavior and classification errors, while accounting for limitations in the available evaluation evidence.
+
+    \item \textbf{Investigation of computational performance through offline scanner-simulation experiments.}
+
+    The developed approaches were further investigated through computational measurements and offline acquisition-workflow simulations. These experiments examine the processing characteristics of volumetric and slice-wise artifact assessment, including sequential evaluation and the potential for earlier quality decisions. Because direct MRI scanner access was unavailable, the investigation is limited to retrospective and simulated workflows and does not establish real-time clinical integration.
+\end{enumerate}
+
+Together, these contributions provide a systematic experimental assessment of deep learning-based artifact detection in fetal diffusion MRI. The work identifies the capabilities and limitations of both processing approaches and provides insights into the role of brain localization, spatial image information, and quality-decision strategies in automated fetal MRI assessment.
+
 \section{Organization of the Thesis}
 % TODO: Complete after the chapter structure is finalized.

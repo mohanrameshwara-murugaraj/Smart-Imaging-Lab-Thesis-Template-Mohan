@@ -151,90 +151,49 @@ In the present thesis, diffusion MRI is not used to estimate developmental bioma
 \section{Image Artifacts and Quality Assessment}
 \subsection{Fetal Motion and Acquisition-Related Artifacts}
 
-Image artifacts in diffusion magnetic resonance imaging (dMRI) arise when the measured MRI signal deviates from the assumptions underlying image acquisition and reconstruction. In fetal dMRI, artifacts may originate from movement during diffusion encoding, changes in anatomical position between acquired images, magnetic field inhomogeneities, and limitations of the imaging sequence. Although these mechanisms can produce visually similar degradation, their physical origins and manifestations are distinct \autocite{malamateniou2013motion,snoussi2025haitch}.
+Artifact mechanisms in diffusion MRI can be distinguished by whether they perturb the diffusion-encoded signal, the spatial correspondence of anatomy, or the image reconstruction. The following distinctions describe their physical and visual signatures rather than the published correction methods reviewed in Chapter 2 \autocite{malamateniou2013motion,snoussi2025haitch}.
 
 \paragraph{Motion-Induced Signal Dropout}
-Motion-induced signal dropout is a characteristic form of degradation in diffusion-weighted imaging. Diffusion-sensitizing gradients are designed to encode microscopic molecular displacement, but macroscopic movement during diffusion preparation can also introduce phase variations. When these phase variations differ across the spins contributing to a voxel, destructive signal interference may occur, resulting in reduced image intensity \autocite{snoussi2025haitch}.
-
-The resulting artifact may appear as a localized reduction in signal intensity, a dark region within the brain, or substantial signal attenuation affecting an individual slice. The severity and spatial extent depend on the motion occurring during the diffusion-encoding period. In severe cases, the anatomical structures within an affected slice may become difficult to distinguish from the surrounding image background.
-
-Importantly, a reduction in diffusion-weighted signal is not necessarily an artifact. Signal attenuation is an expected consequence of diffusion weighting, as described in Section 3.2.1. Motion-induced dropout must therefore be distinguished from normal diffusion-dependent contrast and other sources of low signal intensity.
+Macroscopic displacement during diffusion sensitization can produce spatially varying phase changes across spins contributing to the measured signal. Incomplete signal coherence may cause localized attenuation or severe loss of intensity within an acquired diffusion-weighted slice \autocite{snoussi2025haitch}. Such dropout may obscure parts of the fetal brain even when other slices remain interpretable. It must be distinguished from the expected signal attenuation caused by diffusion weighting itself, described in Section 3.2.1.
 
 \paragraph{Inter-Slice and Inter-Volume Motion}
-A second form of image inconsistency occurs when fetal position or orientation changes between successive acquisitions. In a stack of two-dimensional images, movement between slices may cause adjacent images to represent different anatomical positions rather than a spatially consistent volume \autocite{malamateniou2013motion}.
-
-This effect can appear as discontinuities in anatomical structures, changes in brain position, or inconsistent brain contours across neighboring slices. A similar phenomenon can occur between diffusion volumes acquired at different times, resulting in differences in anatomical alignment between measurements.
-
-Unlike signal dropout, which primarily affects measured signal intensity, inter-slice and inter-volume motion may alter the spatial correspondence of anatomical structures even when the individual images retain recognizable tissue contrast.
+Movement between individually acquired slices changes the anatomical locations represented by their nominal spatial coordinates. Neighboring slices may consequently show discontinuous brain contours or inconsistent positions. Movement between diffusion volumes similarly alters correspondence among repeated or differently encoded measurements, even when each individual image retains recognizable anatomy \autocite{malamateniou2013motion}. Unlike signal dropout, this form of degradation is principally an inconsistency of spatial alignment.
 
 \paragraph{Susceptibility-Related Geometric Distortion}
-Geometric distortion arises when spatial encoding is affected by deviations from the assumed magnetic field distribution. In diffusion-weighted echo-planar imaging (EPI), magnetic susceptibility differences and associated magnetic field inhomogeneities can produce spatial displacement and deformation of anatomical structures. These effects are particularly pronounced along the phase-encoding direction because of the comparatively low effective bandwidth in that direction \autocite{snoussi2025haitch}.
-
-In fetal imaging, susceptibility variations associated with surrounding maternal anatomy can contribute to these distortions. The resulting images may exhibit stretching, compression, or displacement of anatomical structures relative to their expected geometry.
-
-Unlike motion-induced signal dropout, susceptibility-related distortion does not necessarily produce substantial loss of signal intensity. Anatomical structures may remain visible while their spatial positions are inaccurate.
+Off-resonance effects caused by magnetic field inhomogeneity can alter the relationship between acquired signal and reconstructed spatial position. Echo-planar imaging (EPI) is particularly sensitive along its phase-encoding direction, where the effective bandwidth is relatively low. Susceptibility differences involving maternal anatomy can therefore contribute to stretching, compression, or displacement of fetal-brain structures \autocite{snoussi2025haitch}. Anatomical contrast may remain recognizable despite inaccurate geometry.
 
 \paragraph{Ghosting and Other Acquisition-Related Degradation}
-Ghosting artifacts occur when inconsistencies in signal phase or amplitude produce displaced replicas of anatomical structures in reconstructed images. In EPI, phase inconsistencies between alternating readout lines can produce characteristic Nyquist ghosting, while motion and other acquisition instabilities may also generate ghost-like structures.
+Phase or amplitude inconsistencies between readout lines can generate displaced replicas of image structures. In EPI, mismatches between alternating readout lines may produce Nyquist ghosts; this sequence-specific mechanism should be supported by an additional technical citation at final bibliography review. Eddy-current-induced field perturbations can also cause distortion, while low signal-to-noise ratio reduces the visibility of anatomical detail.
 
-Additional image degradation may arise from eddy-current-related field perturbations, which can introduce spatial distortion and misalignment, or from insufficient signal-to-noise ratio, which reduces anatomical visibility. Although these effects have different physical origins, they can coexist within an acquired diffusion-weighted image.
-
-\paragraph{Distinguishing Artifact Mechanisms}
-The mechanisms described above demonstrate that artifact-related image degradation cannot be represented by a single visual characteristic. Signal dropout primarily alters local or widespread intensity, spatial motion introduces inconsistencies in anatomical correspondence, geometric distortion changes apparent anatomical shape or position, and ghosting introduces replicated or displaced signal patterns.
-
-Multiple artifact mechanisms may affect the same acquisition, making observed degradation difficult to attribute to a single physical cause. Their consequences for anatomical visibility, brain-region extraction, and image-quality assessment are considered in Section 3.3.2.
+These mechanisms are not mutually exclusive. A single measurement may contain both signal loss and spatial misregistration, so the visible appearance of an artifact does not always uniquely determine its physical cause.
 
 \subsection{Effects of Artifacts on Image Quality}
 
-The consequences of image artifacts depend on their severity, location, and spatial extent. An image may contain localized degradation yet remain usable for some analyses, while corruption of a critical anatomical region may make the same image unsuitable for another purpose. Quality must therefore be judged relative to the information required for subsequent processing \autocite{malamateniou2013motion,snoussi2025haitch}.
+The practical consequence of an artifact depends on the information required for the intended analysis. A localized disturbance may leave some structures usable while preventing reliable interpretation of a different region. Therefore, severity and location matter alongside overall visual appearance \autocite{malamateniou2013motion,snoussi2025haitch}.
 
-\paragraph{Effects on Anatomical Visibility}
-Artifacts can reduce the visibility of fetal-brain structures by altering intensity, contrast, or spatial organization. Severe attenuation may obscure anatomical boundaries, while geometric distortion may change the apparent position and shape of structures. Such changes are particularly consequential when low spatial resolution or limited signal-to-noise ratio already complicates the delineation of tissue boundaries \autocite{malamateniou2013motion}.
+\paragraph{Anatomical Visibility and Brain Localization}
+Signal attenuation can obscure tissue boundaries, whereas spatial distortion changes their apparent geometry. In automated localization, an image with degraded boundaries may yield an incomplete, displaced, or missing brain mask. Region-of-interest extraction then operates on an altered representation: relevant anatomy may be excluded, or surrounding tissue may be included. These are possible consequences of degraded input, not proof that a particular segmentation error necessarily causes a classification error.
 
-The location of degradation within the brain matters as well as its magnitude: an affected region may contain information essential for a particular analysis, even when much of the remaining image appears interpretable.
+\paragraph{Reliability of Diffusion Measurements}
+Quantitative diffusion analysis combines signal observations obtained with different diffusion weightings and directions. If motion-related signal attenuation affects some observations, or if measurements no longer correspond to the same anatomical location, diffusion-model fitting can become unreliable \autocite{snoussi2025haitch}. Apparent diffusion coefficient, mean diffusivity, and fractional anisotropy estimates may be affected, but the direction and size of any bias depend on the corrupted data, model, and correction procedure.
 
-\paragraph{Effects on Brain Localization and Region Extraction}
-When acquisition degradation alters fetal-brain appearance, automated segmentation can yield incomplete boundaries, fragmented masks, or no usable prediction. A mask that excludes part of the brain may omit relevant information during region-of-interest extraction; an excessively large or displaced mask may include surrounding tissues.
-
-Such localization errors change the input supplied to later processing stages. Whether they actually cause a measurable deterioration in artifact-classification performance is an experimental question, not a conclusion that follows from segmentation error alone.
-
-\paragraph{Effects on Diffusion Measurements}
-Diffusion-model estimation depends on the consistency of signal measurements across diffusion weightings and encoding directions. Motion-related signal loss can produce measurements inconsistent with the intended diffusion contrast; spatial misalignment can combine measurements originating from different anatomical locations \autocite{snoussi2025haitch}.
-
-These effects may alter estimates of apparent diffusion coefficient, mean diffusivity, or fractional anisotropy. The direction and magnitude of resulting errors depend on the affected measurements, model assumptions, and correction procedures, so an artifact does not imply the same bias in every derived parameter.
-
-\paragraph{Effects on Image Quality Assessment}
-Image quality is not inherently binary, even when an operational decision must categorize a measurement as acceptable or artifact-corrupted. Localized and extensive corruption can have different consequences depending on the intended use of the image. This complicates the interpretation of overall quality labels without requiring that every visible irregularity be treated as equally severe.
-
-The resulting computational challenges in recognizing degradation and producing reliable decisions are addressed in Section 3.3.3.
+\paragraph{Fitness for the Intended Assessment}
+Image usability is task-dependent rather than an intrinsic binary property of the acquisition. A binary acceptable-versus-artifact decision is therefore an operational simplification whose interpretation depends on the quality criterion being applied. The implications for classifier outputs and evaluation are considered below.
 
 \subsection{Challenges in Automated Artifact Detection}
 
-Automated artifact detection must distinguish acquisition-related degradation from variations in image appearance produced by tissue contrast, diffusion weighting, and normal acquisition conditions. Reliable classification depends on the visual evidence available to a model, the correspondence between annotations and evaluated images, and the consistency of preceding processing stages \autocite{roecher2024motion,sanchez2024fetmrqc}.
+Beyond recognizing visible degradation, an automated system must produce decisions that remain interpretable under uncertain supervision and multi-stage processing. The main methodological challenges concern the relation between available evidence, prediction scores, and the actual decision being evaluated \autocite{roecher2024motion,sanchez2024fetmrqc}.
 
-\paragraph{Ambiguity of Visual Artifact Evidence}
-Not every low-intensity region or unusual anatomical appearance is an artifact. Expected diffusion-dependent signal attenuation, limited spatial resolution, and acquisition noise can resemble localized degradation. A model may therefore confuse genuine corruption with valid image characteristics, particularly when the abnormality is subtle.
+\paragraph{Evidence and Annotation Granularity}
+A prediction can only use the visual information present in its input, whereas a ground-truth quality label may refer to a larger acquisition unit. Dynamic-level labels used to train or assess individual slices therefore create a mismatch between the target and the evidence available. This issue is identified in the Problem Statement; its consequences must be quantified using the annotation and evaluation protocol described in Chapter 4, rather than assuming that every disagreement represents visually incorrect artifact recognition.
 
-Some artifact signatures are visible within an individual image, while others are identifiable chiefly through relationships between slices. The available spatial context thus limits what any single prediction can establish.
+\paragraph{End-to-End Reliability}
+When classification follows segmentation and region extraction, evaluation of a classifier on reference crops does not characterize the complete automated system. An end-to-end assessment must account for the distribution of generated crops, failures that prevent predictions, and downstream decision rules. The image-level consequences of inaccurate localization were described in Section 3.3.2; the additional issue here is how those events are represented in system-level performance reporting.
 
-\paragraph{Annotation Granularity and Label Uncertainty}
-The supervision available to a classifier must be distinguished from the visual information in its input. A label assigned to a diffusion dynamic does not establish whether each constituent slice contains a visible artifact. Inherited slice labels may consequently disagree with the appearance of an individual image.
+\paragraph{Confidence, Imbalance, and Decision Criteria}
+A classifier output threshold defines an operational decision, but the score should not be assumed to be a calibrated probability of image usability. Moreover, class imbalance can make accuracy appear favorable despite poor sensitivity for corrupted acquisitions. Reliability therefore requires reporting complementary error measures and examining decision thresholds in a manner consistent with the intended quality-control objective. Mathematical definitions of these measures are provided in Section 3.5.
 
-An apparent classification error against such a label need not always represent failure to recognize visible corruption. Measured performance must be interpreted in light of how ground-truth labels were obtained and at what spatial level they apply.
-
-\paragraph{Error Propagation in Multi-Stage Processing}
-A segmentation--crop--classification pipeline can introduce dependencies between processing stages. Incomplete or displaced masks may remove relevant anatomy or introduce unrelated structures; crop extraction can fail entirely. Consequently, standalone classifier performance may differ from the behavior of the complete pipeline on automatically generated inputs.
-
-For this reason, downstream predictions and missing outputs must be evaluated alongside localization reliability, rather than attributing all final errors to the classifier.
-
-\paragraph{Classification Confidence and Decision Reliability}
-A model score converted to a label through a decision threshold is not necessarily a calibrated probability of image usability. Its interpretation depends on calibration, the training distribution, and the intended decision criterion.
-
-Class imbalance presents a separate evaluation problem: high overall accuracy can coexist with low detection sensitivity for relatively uncommon corrupted images. Sensitivity, specificity, precision, and the consequences of false-positive and false-negative decisions should therefore be considered together.
-
-For a slice-wise system, predictions must additionally be combined when a decision is required for the complete diffusion dynamic. Aggregation thresholds and unavailable predictions can affect that decision; their effects must be measured rather than assumed.
-
-These challenges motivate evaluating artifact detection as an integrated processing and decision system. General metric definitions are introduced in Section 3.5, while the pipeline-specific evaluation is documented in Chapters 4 and 5.
+The distinction between image-level prediction, missing outputs, and dynamic-level quality decisions is especially important for sequential slice-wise processing. How such outputs are combined is a methodological choice to be tested in Chapters 4 and 5, not a property guaranteed by the classifier architecture.
 
 \section{Deep Learning for Medical Image Analysis}
 \subsection{Convolutional Neural Networks}

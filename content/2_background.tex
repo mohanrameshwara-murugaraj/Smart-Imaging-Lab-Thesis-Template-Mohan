@@ -51,13 +51,13 @@ Despite these limitations, low-field MRI offers several physical advantages. Mag
 
 Magnetic field strength also influences tissue relaxation properties. At lower field strengths, longitudinal relaxation times ($T_1$) are generally shorter, while effective transverse relaxation times ($T_2^*$) may become longer because of reduced susceptibility-related dephasing. Longer $T_2^*$ can reduce signal decay during EPI readout, although the resulting image quality still depends on the acquisition sequence and other relaxation mechanisms. In addition, lower operating frequencies can reduce radiofrequency field inhomogeneities and the effects of dielectric interference \autocite{lowfieldbody2023}.
 
-These characteristics are relevant to fetal MRI because the fetal brain is surrounded by maternal tissues and may lie close to gas-containing bowel structures. Susceptibility differences at these interfaces can introduce spatial distortions, particularly during diffusion-weighted imaging. A lower magnetic field strength can mitigate some of these effects, although it does not eliminate artifacts caused by fetal movement, maternal respiration, or other acquisition-related disturbances.
+In fetal acquisitions, susceptibility effects can arise near maternal gas-containing bowel structures. Lower field strength can mitigate susceptibility-induced distortion, but does not eliminate all sources of image degradation.
 
 The feasibility of fetal imaging at 0.55 T has been investigated in clinical studies. Aviles Verdera et al. \autocite{avilesverdera2023lowfield} evaluated a comprehensive low-field fetal MRI protocol incorporating anatomical imaging, quantitative $T_2^*$ measurements, and diffusion-weighted acquisitions. Their prospective study included 79 fetal MRI examinations and demonstrated that a clinically feasible 20-minute protocol could produce reliable anatomical and functional measurements. These findings support the applicability of modern low-field MRI systems to fetal imaging while emphasizing the importance of acquisition optimization.
 
 In addition to its physical characteristics, low-field MRI can offer practical advantages through wider scanner bores, lower radiofrequency power deposition, and reduced installation requirements. These properties may improve patient comfort and accessibility, although their availability depends on the specific scanner design. In fetal imaging, a wider bore may be particularly beneficial for accommodating pregnant patients and improving examination tolerability \autocite{avilesverdera2023lowfield,lowfieldbody2023}.
 
-For automated image analysis, low-field acquisitions introduce important considerations. Reduced SNR and differences in image contrast may influence the visibility of fetal-brain boundaries, complicating automatic segmentation and subsequent region-of-interest extraction. At the same time, reduced susceptibility-induced distortion may improve anatomical consistency in some acquisitions. Therefore, the characteristics of low-field images must be considered when developing segmentation and artifact-classification models.
+For image-analysis models, the lower SNR and altered contrast of low-field acquisitions may affect fetal-brain boundary visibility and thus the reliability of extracted brain regions. These consequences are distinct from the physical advantages discussed above.
 
 The present thesis focuses on fetal diffusion MRI data acquired at 0.55 T. The physical trade-offs associated with this field strength provide important context for understanding the image characteristics encountered by the developed processing pipelines. The specific acquisition parameters and properties of the experimental dataset are described in Chapter 4.
 
@@ -73,7 +73,7 @@ Unlike conventional adult brain imaging, fetal MRI acquisition is influenced by 
 
 In addition to structural imaging, diffusion MRI provides complementary information about fetal-brain microstructure. The principles of diffusion-weighted acquisition and their application to fetal-brain imaging are discussed in Section 3.2.
 
-The characteristics of fetal MRI described in this subsection provide the anatomical and acquisition-related background necessary for understanding the image representations and processing methods investigated in this thesis.
+These fetal-specific anatomical and acquisition characteristics provide context for the diffusion measurements considered next.
 
 \section{Diffusion Magnetic Resonance Imaging}
 \subsection{Fundamentals of Diffusion MRI}
@@ -102,11 +102,11 @@ Diffusion properties may also vary with spatial direction. Diffusion tensor imag
 
 An important distinction must be made between microscopic diffusion and macroscopic movement during image acquisition. Diffusion MRI is designed to measure signal effects caused by molecular displacement, but the applied diffusion gradients are also sensitive to larger-scale motion. Movement of the subject during acquisition can therefore produce signal changes that are unrelated to the underlying tissue microstructure. In fetal diffusion MRI, this presents an important challenge because motion-related signal degradation may interfere with the interpretation of diffusion-weighted images \autocite{malamateniou2013motion,snoussi2025haitch}.
 
-These principles establish the relationship between molecular diffusion, diffusion-weighted signal formation, and tissue microstructure. They also provide the foundation for understanding why diffusion MRI is sensitive to acquisition-related motion and why identifying corrupted measurements is important for subsequent image analysis.
+The distinction between molecular displacement and bulk motion is especially important when interpreting diffusion signal attenuation.
 
 \subsection{Diffusion-Weighted Image Acquisition}
 
-Diffusion-weighted magnetic resonance imaging (DWI) measures changes in the MRI signal caused by the microscopic movement of water molecules during acquisition. To achieve diffusion sensitivity, conventional MRI pulse sequences are modified by introducing magnetic field gradients that produce phase changes dependent on molecular displacement. The resulting diffusion-weighted signal is influenced by the strength and timing of these gradients, the direction of diffusion encoding, and the microstructural properties of the examined tissue \autocite{stejskal1965diffusion,basser1994tensor}.
+Diffusion-weighted image acquisition implements the sensitivity to molecular motion described in Section 3.2.1 through the timing, amplitude and orientation of diffusion-encoding gradients \autocite{stejskal1965diffusion,basser1994tensor}.
 
 A widely used approach to diffusion encoding is the pulsed-gradient spin-echo (PGSE) sequence introduced by Stejskal and Tanner \autocite{stejskal1965diffusion}. In its conventional implementation, two diffusion-sensitizing gradient pulses are applied on opposite sides of a 180-degree refocusing radiofrequency pulse. The first gradient introduces position-dependent phase shifts, while the second gradient compensates for these shifts when the spins remain stationary. If water molecules move between the gradient pulses, complete phase rephasing does not occur, producing attenuation of the measured signal.
 
@@ -126,11 +126,11 @@ Diffusion-weighted imaging is frequently performed using single-shot spin-echo e
 
 Several acquisition parameters influence the resulting image quality. The echo time (TE) determines the interval between excitation and signal-echo formation, while the repetition time (TR) describes the interval between successive excitation cycles. Spatial resolution depends on parameters including the field of view, acquisition matrix, and slice thickness. Changes in these parameters affect signal intensity, image contrast, coverage, and acquisition duration. In diffusion-weighted imaging, the requirements of diffusion preparation and rapid spatial encoding introduce additional trade-offs between image quality and acquisition efficiency.
 
-In fetal diffusion MRI, these acquisition characteristics are particularly important because the fetus may move between consecutive slices or during the diffusion-encoding period. Individual measurements can therefore contain motion-related signal loss or spatial inconsistencies, while repeated diffusion acquisitions may differ in fetal-brain position and orientation. These effects complicate the interpretation and processing of diffusion-weighted images and motivate the identification of corrupted measurements \autocite{malamateniou2013motion,snoussi2025haitch}.
+Motion during diffusion preparation and movement between acquired slices represent distinct sources of measurement inconsistency in fetal imaging \autocite{malamateniou2013motion,snoussi2025haitch}. Their image-quality consequences are considered in Section 3.3.
 
-The organization of diffusion-weighted data also affects subsequent image analysis. A diffusion acquisition may contain multiple two-dimensional slices associated with a particular diffusion weighting and encoding direction. These slices can be represented individually or assembled into a volumetric image. Consequently, the choice between slice-wise and volumetric processing determines how much spatial information is available to an automated image-analysis method.
+Diffusion images can be stored as two-dimensional slices grouped by diffusion weighting and direction. The precise organization of the experimental data used here is described in Chapter 4.
 
-The acquisition principles described in this subsection provide the technical foundation for understanding diffusion-weighted image characteristics and their sensitivity to motion. Their application to fetal-brain imaging is discussed in Section 3.2.3, while the specific acquisition parameters and organization of the experimental dataset are presented in Chapter 4.
+Section 3.2.3 considers the application of these measurements to fetal-brain development.
 
 \subsection{Diffusion MRI in Fetal Brain Imaging}
 

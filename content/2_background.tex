@@ -2,6 +2,43 @@
 % Approved subsection headings. Literature-backed prose remains to be drafted.
 \section{Magnetic Resonance Imaging}
 \subsection{Fundamentals of MRI}
+
+Magnetic resonance imaging (MRI) is a non-invasive imaging technique that uses magnetic fields and radiofrequency (RF) pulses to generate images of internal anatomical structures. Unlike imaging techniques based on ionizing radiation, MRI relies on the magnetic properties of atomic nuclei, particularly hydrogen nuclei, which are abundant in biological tissues due to the presence of water and fat. Differences in tissue properties and magnetic resonance signal behavior enable MRI to produce detailed images with high soft-tissue contrast \autocite{plewes2012physics}.
+
+The physical principle underlying MRI is nuclear magnetic resonance (NMR). Hydrogen nuclei possess an intrinsic angular momentum, known as nuclear spin, which is associated with a magnetic moment. When placed in a strong external magnetic field, denoted by $B_0$, these magnetic moments exhibit a slight population imbalance between different energy states, resulting in a net magnetization aligned with the main magnetic field. The magnetization also undergoes precessional motion around the field direction at the Larmor frequency \autocite{bloch1946nuclear,plewes2012physics}.
+
+The angular Larmor frequency is expressed as
+\begin{equation}
+\omega_0 = \gamma B_0,
+\end{equation}
+where $\omega_0$ represents the angular precession frequency, $\gamma$ is the gyromagnetic ratio of the nucleus, and $B_0$ is the magnetic field strength. For hydrogen, the corresponding frequency is approximately 42.58 MHz per tesla. Consequently, the resonance frequency depends directly on the strength of the applied magnetic field.
+
+To generate a measurable MRI signal, an RF magnetic field, commonly denoted by $B_1$, is applied near the Larmor frequency. This excitation changes the orientation of the net magnetization, producing a transverse magnetization component. After the RF pulse is removed, the magnetization gradually returns toward its equilibrium state through relaxation processes. The changing transverse magnetization induces an electrical signal in the receiver coils, which forms the basis of MRI signal acquisition \autocite{plewes2012physics}.
+
+Two fundamental relaxation mechanisms determine the behavior of the magnetization following excitation. Longitudinal relaxation, characterized by the time constant $T_1$, describes the recovery of magnetization along the main magnetic field. Transverse relaxation, characterized by $T_2$, describes the loss of phase coherence among spins in the transverse plane. For an idealized relaxation process following excitation, longitudinal recovery and transverse decay can be described by
+\begin{equation}
+M_z(t) = M_0\left(1-e^{-t/T_1}\right)
+\end{equation}
+and
+\begin{equation}
+M_{xy}(t) = M_{xy}(0)e^{-t/T_2},
+\end{equation}
+where $M_0$ represents the equilibrium longitudinal magnetization, $M_z$ is the longitudinal magnetization, and $M_{xy}$ represents the transverse magnetization. These expressions describe simplified relaxation behavior, while the complete magnetization evolution depends on the applied pulse sequence and magnetic field conditions \autocite{bloch1946nuclear,plewes2012physics}.
+
+In practical MRI, transverse signal decay is also influenced by magnetic field inhomogeneities. The resulting effective relaxation time, $T_2^*$, accounts for both intrinsic transverse relaxation and additional dephasing caused by spatial variations in the magnetic field. The relationships between relaxation properties, RF excitation, and acquisition timing contribute to the contrast observed between different tissues.
+
+Spatial localization is achieved through the application of magnetic field gradients. These gradients introduce controlled variations in magnetic field strength across the imaging region, causing the resonance frequency and accumulated phase to depend on spatial position. By combining slice selection, phase encoding, and frequency encoding, MRI systems acquire signals containing spatial information about the underlying anatomy. The introduction of spatial encoding through magnetic field gradients was a fundamental development in the formation of magnetic resonance images \autocite{lauterbur1973image}.
+
+The acquired MRI signal is commonly represented in a spatial-frequency domain known as k-space. Gradient waveforms determine the trajectory through this domain, while the measured signals contain information about the spatial distribution of transverse magnetization. Under an idealized imaging model, the relationship between the acquired signal and the underlying image can be expressed as
+\begin{equation}
+S(\mathbf{k}) = \int \rho(\mathbf{r}) e^{-i2\pi\mathbf{k}\cdot\mathbf{r}}\,d\mathbf{r},
+\end{equation}
+where $S(\mathbf{k})$ is the measured signal at spatial-frequency position $\mathbf{k}$, $\rho(\mathbf{r})$ represents the spatial distribution of the complex-valued image signal, and $\mathbf{r}$ denotes spatial position. Image reconstruction involves recovering the spatial representation from the acquired k-space measurements, commonly using Fourier-based methods \autocite{tamir2025cookbook}.
+
+MRI image quality is influenced by several factors, including magnetic field strength, signal-to-noise ratio, spatial resolution, acquisition timing, and movement during signal acquisition. In particular, motion can disturb the consistency of spatially encoded measurements, resulting in image degradation or reconstruction artifacts. These effects are especially relevant to fetal MRI, where the subject may move unpredictably during the examination.
+
+The principles described in this section provide the physical foundation for understanding MRI acquisition and image formation. The characteristics of low-field MRI and the specific challenges associated with fetal imaging are discussed in the following subsections.
+
 \subsection{Low-Field MRI}
 \subsection{Fetal MRI}
 

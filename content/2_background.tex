@@ -134,6 +134,20 @@ Section 3.2.3 considers the application of these measurements to fetal-brain dev
 
 \subsection{Diffusion MRI in Fetal Brain Imaging}
 
+Diffusion magnetic resonance imaging (dMRI) provides a non-invasive approach for investigating the microstructural organization of the developing fetal brain. In contrast to conventional anatomical imaging, diffusion measurements can characterize aspects of tissue organization associated with cellular development and the formation of neural pathways. This makes fetal dMRI a valuable research technique for examining brain maturation during gestation \autocite{christiaens2019inutero}.
+
+During fetal development, the brain undergoes several microstructural changes, including neuronal migration, axonal organization, and the maturation of transient cerebral compartments. These processes influence the spatial organization of tissue and consequently the diffusion characteristics of water molecules. The interpretation of fetal diffusion measurements therefore requires consideration of gestational age and the developmental stage of the examined anatomical region \autocite{christiaens2019inutero,calixto2024microstructure}.
+
+Diffusion tensor imaging (DTI) is commonly used to investigate these developmental characteristics. Measures such as mean diffusivity (MD) and fractional anisotropy (FA) provide quantitative descriptions of diffusion magnitude and directional dependence, respectively. Changes in these measurements across gestational age can indicate differences in tissue organization and maturation. However, diffusion-derived measures are not specific to individual biological processes, and their interpretation depends on the underlying tissue structure and diffusion model \autocite{calixto2024microstructure}.
+
+Calixto et al. \autocite{calixto2024microstructure} investigated fetal-brain microstructural development using diffusion MRI in 44 fetuses between 23 and 36 weeks of gestation. Their analysis examined regional developmental patterns in diffusion measurements, demonstrating that diffusion properties vary across brain regions and stages of development. Such investigations illustrate the importance of diffusion MRI for understanding the spatially heterogeneous maturation of the fetal brain.
+
+Beyond regional diffusion measurements, diffusion MRI supports the investigation of developing white matter pathways through tractography. This technique uses estimated diffusion orientations to reconstruct trajectories that provide an indirect representation of possible neural pathways. Fetal diffusion tractography can therefore contribute to the study of developing structural connectivity, although the resulting trajectories remain dependent on diffusion modeling and reconstruction assumptions \autocite{christiaens2019inutero}.
+
+These applications rely on the availability of diffusion measurements that preserve meaningful anatomical and signal information. Measurements affected by substantial image degradation may be unsuitable for reliable downstream analysis, even when they can be included in an image-processing workflow. Consequently, image-quality assessment is an important consideration when preparing fetal diffusion MRI data for quantitative analysis.
+
+In the present thesis, diffusion MRI is not used to estimate developmental biomarkers or reconstruct white matter pathways. Instead, the research investigates automatic identification of artifact-corrupted fetal diffusion MRI acquisitions. The developmental applications discussed in this subsection establish the scientific importance of obtaining reliable diffusion measurements, while the specific image-analysis methods are described in Chapter 4.
+
 \section{Image Artifacts and Quality Assessment}
 \subsection{Fetal Motion and Acquisition-Related Artifacts}
 \subsection{Effects of Artifacts on Image Quality}

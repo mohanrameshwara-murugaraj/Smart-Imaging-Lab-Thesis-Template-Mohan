@@ -218,8 +218,6 @@ Two-dimensional CNNs perform spatial convolution across image height and width; 
 
 During training, a loss function measures disagreement between predictions and target labels. Backpropagation computes gradients with respect to network parameters, which are updated through an optimization algorithm. A CNN can produce an image-level classification output or spatially resolved segmentation predictions, depending on its output architecture and objective \autocite{lecun2015deeplearning,litjens2017survey}.
 
-These principles underpin the encoder--decoder, residual, and computationally efficient architectures described below. Their concrete implementation for the thesis datasets is presented in Chapter 4.
-
 \subsection{U-Net and Encoder--Decoder Architectures}
 
 Semantic segmentation assigns a class to each pixel or voxel, requiring an output that preserves anatomical location rather than only describing an entire image. Encoder--decoder networks address this requirement by combining extraction of contextual features with progressive recovery of spatial resolution.
@@ -234,9 +232,7 @@ where $E_l$ is the encoder feature map at level $l$, $D_{l+1}$ denotes the deepe
 
 By merging local spatial detail with deeper context, skip connections facilitate the delineation of anatomical structures \autocite{ronneberger2015unet}. A final output layer maps decoder features to the required segmentation classes. In binary segmentation, a single output channel with a sigmoid activation may be thresholded to obtain a binary mask.
 
-The encoder--decoder concept applies to both two-dimensional and three-dimensional convolutions. Furthermore, its encoder can employ different feature-extraction backbones. The nnU-Net framework builds on U-Net-based architectures by adapting preprocessing, configuration, training, and postprocessing to properties of the target dataset \autocite{isensee2021nnunet}; its prior empirical use was reviewed in Chapter 2.
-
-In this thesis, segmentation serves to localize the fetal brain before subsequent classification. The actual volumetric and slice-wise configurations, including mask processing and crop generation, are specified in Chapter 4.
+The encoder--decoder concept also supports alternative feature-extraction backbones and U-Net variants, including the nnU-Net family reviewed in Chapter 2 \autocite{isensee2021nnunet}.
 
 \subsection{Residual Networks}
 
@@ -260,9 +256,9 @@ y=\mathcal{F}(x,W)+W_sx,
 \end{equation}
 with $W_s$ representing the dimension-matching projection.
 
-A ResNet classifier combines successive residual stages with a final classification head, commonly using global average pooling followed by a fully connected layer. Residual learning can be implemented with either two-dimensional or three-dimensional convolutions. In the latter case, learned filters incorporate spatial information across the volume while preserving the same shortcut principle.
+A ResNet classifier typically combines successive residual stages with a classification head, often using global average pooling and a fully connected layer. The same residual-block principle applies when convolution is extended to volumetric data.
 
-Residual connections facilitate optimization but do not by themselves establish task-specific classification accuracy. The three-dimensional ResNet classifier employed for dynamic-level artifact detection in this thesis is described and evaluated in Chapters 4 and 5.
+Residual connections facilitate optimization but do not alone establish task-specific classification accuracy.
 
 \subsection{Efficient and Lightweight Neural Networks}
 
@@ -287,7 +283,7 @@ MobileNetV3 combines inverted residual structures, depthwise convolutions, SE me
 \begin{equation}
 \operatorname{h\mbox{-}swish}(x)=x\,\frac{\operatorname{ReLU6}(x+3)}{6},
 \end{equation}
-where $\operatorname{ReLU6}(x)=\min(\max(0,x),6)$. The MobileNetV3 family includes Large and Small variants designed for different computational constraints. Its feature-extraction stages can be adapted as an encoder within a segmentation architecture, provided a suitable decoder reconstructs spatial predictions.
+where $\operatorname{ReLU6}(x)=\min(\max(0,x),6)$. MobileNetV3 feature-extraction stages can form the encoder of a segmentation architecture when paired with a decoder that reconstructs spatial predictions.
 
 \paragraph{EfficientNet and Compound Scaling}
 EfficientNet coordinates changes to network depth, width, and input resolution rather than scaling these independently \autocite{tan2019efficientnet}. The compound scaling formulation is
@@ -303,7 +299,7 @@ where $\phi$ controls overall scaling and the constants determine the relative i
 \paragraph{Practical Computational Efficiency}
 Parameter count and theoretical operation count do not fully determine measured inference latency. Input shapes, memory transfers, operator implementation, and processing hardware also matter. The computational cost of an image-analysis pipeline further includes preprocessing, segmentation decoding, crop extraction, and classification rather than only the backbone network.
 
-For the two-dimensional pipeline in this thesis, a MobileNetV3-based encoder is used for fetal-brain segmentation and EfficientNet-B0 for artifact classification. Chapter 4 documents their actual configurations and Chapter 5 evaluates their observed performance.
+In this thesis, MobileNetV3-based features support two-dimensional brain segmentation, EfficientNet-B0 supports slice-wise artifact classification, and a three-dimensional ResNet supports dynamic-level classification. Chapter 4 specifies the implemented network configurations and Chapter 5 reports their experimental evaluation.
 
 \section{Model Evaluation Principles}
 \subsection{Segmentation Evaluation Metrics}

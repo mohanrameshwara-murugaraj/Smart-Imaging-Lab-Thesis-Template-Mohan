@@ -196,10 +196,114 @@ A classifier output threshold defines an operational decision, but the score sho
 The distinction between image-level prediction, missing outputs, and dynamic-level quality decisions is especially important for sequential slice-wise processing. How such outputs are combined is a methodological choice to be tested in Chapters 4 and 5, not a property guaranteed by the classifier architecture.
 
 \section{Deep Learning for Medical Image Analysis}
+
 \subsection{Convolutional Neural Networks}
+
+Convolutional neural networks (CNNs) are deep learning models designed to process spatially organized data, including two-dimensional images and three-dimensional medical imaging volumes. Instead of connecting every input element to every output unit, convolutional layers apply spatially localized filters with shared learnable parameters. This enables hierarchical image feature extraction with fewer parameters than a comparable dense transformation \autocite{lecun2015deeplearning,litjens2017survey}.
+
+A convolutional layer applies learned kernels to local neighborhoods of an input feature map. For a two-dimensional multi-channel input, the output at location $(i,j)$ in output channel $k$ can be written as
+\begin{equation}
+z_{i,j,k}=b_k+\sum_{c=1}^{C_{\mathrm{in}}}\sum_{u=0}^{K_h-1}\sum_{v=0}^{K_w-1}W_{u,v,c,k}\,x_{i+u,j+v,c},
+\end{equation}
+where $x$ is the input feature map, $W$ contains the learned kernel weights, $b_k$ is the output-channel bias, $C_{\mathrm{in}}$ is the number of input channels, and $K_h$ and $K_w$ denote kernel dimensions. As commonly implemented in deep learning frameworks, this operation is technically cross-correlation; stride and padding are omitted for clarity.
+
+Applying identical weights across positions allows a kernel to respond to recurring spatial patterns, such as edges and intensity transitions. Stacking layers enables features to incorporate progressively more complex anatomical context \autocite{lecun2015deeplearning}. Nonlinear activations allow these stacked operations to represent relationships beyond a single linear transformation. One common activation is the rectified linear unit,
+\begin{equation}
+\operatorname{ReLU}(z)=\max(0,z).
+\end{equation}
+
+Pooling and strided convolutions reduce spatial resolution while increasing the effective receptive field of subsequent operations. The receptive field denotes the part of the original input capable of influencing a particular feature response. These operations support contextual representation but also reduce the spatial detail available in deeper feature maps \autocite{litjens2017survey}.
+
+Two-dimensional CNNs perform spatial convolution across image height and width; three-dimensional CNNs additionally operate along a third spatial dimension. Volumetric operations can incorporate context across slices, whereas two-dimensional operations extract information within individual images. This difference defines the available spatial context, not an inherent performance advantage for either approach.
+
+During training, a loss function measures disagreement between predictions and target labels. Backpropagation computes gradients with respect to network parameters, which are updated through an optimization algorithm. A CNN can produce an image-level classification output or spatially resolved segmentation predictions, depending on its output architecture and objective \autocite{lecun2015deeplearning,litjens2017survey}.
+
+These principles underpin the encoder--decoder, residual, and computationally efficient architectures described below. Their concrete implementation for the thesis datasets is presented in Chapter 4.
+
 \subsection{U-Net and Encoder--Decoder Architectures}
+
+Semantic segmentation assigns a class to each pixel or voxel, requiring an output that preserves anatomical location rather than only describing an entire image. Encoder--decoder networks address this requirement by combining extraction of contextual features with progressive recovery of spatial resolution.
+
+U-Net, introduced by Ronneberger et al. \autocite{ronneberger2015unet}, has a contracting encoder, an expanding decoder, and skip connections between corresponding spatial resolutions. The encoder typically uses successive convolutional stages and downsampling to obtain increasingly contextual representations. The deepest, spatially compressed representation forms a bottleneck connecting encoder and decoder.
+
+The decoder uses upsampling and convolutional transformations to reconstruct spatially resolved predictions. However, the compressed bottleneck alone may not retain the fine positional details necessary for accurate boundaries. U-Net therefore transfers higher-resolution feature maps from the encoder to the decoder, typically by channel-wise concatenation. A simplified decoder stage can be represented as
+\begin{equation}
+D_l=f_l\left(\operatorname{Concat}\left(E_l,\operatorname{Up}(D_{l+1})\right)\right),
+\end{equation}
+where $E_l$ is the encoder feature map at level $l$, $D_{l+1}$ denotes the deeper decoder representation, $\operatorname{Up}$ represents upsampling, and $f_l$ is a learned feature transformation. Corresponding feature maps must have compatible spatial dimensions before concatenation.
+
+By merging local spatial detail with deeper context, skip connections facilitate the delineation of anatomical structures \autocite{ronneberger2015unet}. A final output layer maps decoder features to the required segmentation classes. In binary segmentation, a single output channel with a sigmoid activation may be thresholded to obtain a binary mask.
+
+The encoder--decoder concept applies to both two-dimensional and three-dimensional convolutions. Furthermore, its encoder can employ different feature-extraction backbones. The nnU-Net framework builds on U-Net-based architectures by adapting preprocessing, configuration, training, and postprocessing to properties of the target dataset \autocite{isensee2021nnunet}; its prior empirical use was reviewed in Chapter 2.
+
+In this thesis, segmentation serves to localize the fetal brain before subsequent classification. The actual volumetric and slice-wise configurations, including mask processing and crop generation, are specified in Chapter 4.
+
 \subsection{Residual Networks}
+
+Increasing CNN depth can make network optimization difficult. He et al. identified a degradation problem in which deeper networks can exhibit higher training error despite having greater representational capacity. Residual networks (ResNets) were introduced to address this difficulty through shortcut connections and residual learning \autocite{he2016resnet}.
+
+Rather than learning a complete mapping directly, a residual block learns a transformation $\mathcal{F}(x,W)$ that is added to its input:
+\begin{equation}
+y=\mathcal{F}(x,W)+x,
+\end{equation}
+where $x$ is the input and $W$ denotes learnable parameters. When preserving the input is useful, $\mathcal{F}$ can approach zero so the block approximates an identity mapping. A nonlinear activation may follow the addition, depending on the ResNet variant.
+
+For the simplified pre-activation addition shown above, the input derivative is
+\begin{equation}
+\frac{\partial y}{\partial x}=I+\frac{\partial\mathcal{F}(x,W)}{\partial x},
+\end{equation}
+where $I$ is the identity operator. The shortcut supplies a direct contribution to gradient propagation, although it does not guarantee stable gradients under all conditions \autocite{he2016resnet}.
+
+Residual blocks generally contain convolutions, normalization, and activation operations. The original ResNet design employed both basic and bottleneck blocks. An identity shortcut requires compatible input and output feature dimensions; when dimensions differ, a projection can be used:
+\begin{equation}
+y=\mathcal{F}(x,W)+W_sx,
+\end{equation}
+with $W_s$ representing the dimension-matching projection.
+
+A ResNet classifier combines successive residual stages with a final classification head, commonly using global average pooling followed by a fully connected layer. Residual learning can be implemented with either two-dimensional or three-dimensional convolutions. In the latter case, learned filters incorporate spatial information across the volume while preserving the same shortcut principle.
+
+Residual connections facilitate optimization but do not by themselves establish task-specific classification accuracy. The three-dimensional ResNet classifier employed for dynamic-level artifact detection in this thesis is described and evaluated in Chapters 4 and 5.
+
 \subsection{Efficient and Lightweight Neural Networks}
+
+The computational demands of a CNN depend on network depth, channel width, convolutional kernel dimensions, and input resolution. Efficient architectures seek useful representations while limiting parameter counts, memory demands, and computation. MobileNetV3 \autocite{howard2019mobilenetv3} and EfficientNet \autocite{tan2019efficientnet} use related efficient convolutional components but emphasize different architectural design strategies.
+
+\paragraph{Depthwise Separable Convolutions}
+A conventional $K\times K$ convolution mapping $C_{\mathrm{in}}$ input channels to $C_{\mathrm{out}}$ output channels contains, excluding biases,
+\begin{equation}
+P_{\mathrm{standard}}=K^2C_{\mathrm{in}}C_{\mathrm{out}}
+\end{equation}
+kernel parameters. A depthwise separable convolution first filters each input channel independently and then mixes channels through a $1\times1$ pointwise convolution:
+\begin{equation}
+P_{\mathrm{separable}}=K^2C_{\mathrm{in}}+C_{\mathrm{in}}C_{\mathrm{out}}.
+\end{equation}
+The factorization can reduce parameter counts and multiply-accumulate operations, although actual speed depends on hardware and implementation.
+
+\paragraph{Inverted Residual Blocks and Channel Attention}
+Mobile inverted bottleneck blocks commonly expand the feature-channel dimension, perform depthwise spatial filtering, and project the representation to a narrower output. A residual shortcut can be used when feature dimensions permit. Squeeze-and-excitation (SE) operations additionally summarize spatial responses through global pooling and compute channel-wise weights to recalibrate the feature maps. These mechanisms support compact feature processing while preserving learned channel interactions.
+
+\paragraph{MobileNetV3}
+MobileNetV3 combines inverted residual structures, depthwise convolutions, SE mechanisms, and efficient activations. Its design was developed using hardware-aware architecture search and subsequent refinements \autocite{howard2019mobilenetv3}. One activation used in selected layers is hard-swish:
+\begin{equation}
+\operatorname{h\mbox{-}swish}(x)=x\,\frac{\operatorname{ReLU6}(x+3)}{6},
+\end{equation}
+where $\operatorname{ReLU6}(x)=\min(\max(0,x),6)$. The MobileNetV3 family includes Large and Small variants designed for different computational constraints. Its feature-extraction stages can be adapted as an encoder within a segmentation architecture, provided a suitable decoder reconstructs spatial predictions.
+
+\paragraph{EfficientNet and Compound Scaling}
+EfficientNet coordinates changes to network depth, width, and input resolution rather than scaling these independently \autocite{tan2019efficientnet}. The compound scaling formulation is
+\begin{equation}
+d=\alpha^\phi,\qquad w=\beta^\phi,\qquad r=\gamma^\phi,
+\end{equation}
+subject approximately to
+\begin{equation}
+\alpha\beta^2\gamma^2\approx2,\qquad \alpha,\beta,\gamma\geq1,
+\end{equation}
+where $\phi$ controls overall scaling and the constants determine the relative increases in depth, width, and resolution. EfficientNet-B0 is the baseline from which larger models in the original family are obtained. The baseline uses mobile inverted bottleneck convolutional blocks with channel attention, sharing some efficient building-block principles with the MobileNet family while differing in network-level design.
+
+\paragraph{Practical Computational Efficiency}
+Parameter count and theoretical operation count do not fully determine measured inference latency. Input shapes, memory transfers, operator implementation, and processing hardware also matter. The computational cost of an image-analysis pipeline further includes preprocessing, segmentation decoding, crop extraction, and classification rather than only the backbone network.
+
+For the two-dimensional pipeline in this thesis, a MobileNetV3-based encoder is used for fetal-brain segmentation and EfficientNet-B0 for artifact classification. Chapter 4 documents their actual configurations and Chapter 5 evaluates their observed performance.
 
 \section{Model Evaluation Principles}
 \subsection{Segmentation Evaluation Metrics}

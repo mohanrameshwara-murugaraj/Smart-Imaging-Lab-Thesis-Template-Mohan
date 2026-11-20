@@ -16,7 +16,7 @@ The available MRI volumes and their corresponding reference masks formed the bas
 
 \subsection{Three-Dimensional MRI and Reference Mask Preparation}
 
-The initial three-dimensional experiments were conducted using complete fetal diffusion MRI volumes and their corresponding reference brain segmentation masks. Each MRI dynamic was associated with a three-dimensional binary mask delineating the fetal brain from the surrounding maternal and fetal tissues. The reference masks were initially generated through automated segmentation and subsequently manually corrected. These paired images and masks were used to develop the volumetric brain segmentation models, allowing the anatomical localization of the fetal brain directly from the acquired diffusion MRI data.
+The three-dimensional experiments used the MRI volumes and manually refined binary brain masks introduced in Section~\ref{sec:data-preparation}. For model preparation, each volume and reference mask was retained as a spatially corresponding pair.
 
 Before segmentation training, the MRI volumes and reference masks were paired according to their case and dynamic identifiers. The spatial dimensions of each image--mask pair were checked to ensure correspondence between the MRI intensities and the reference segmentation. The masks were prepared as binary segmentation targets, distinguishing background voxels (0) from fetal brain voxels (1). Unlike the later two-dimensional approach, the original volumetric representation was retained to allow the segmentation models to process spatial information across adjacent image slices.
 
@@ -93,11 +93,11 @@ The segmentation and classification stages were integrated into a sequential inf
 
 \subsubsection{Conversion of Three-Dimensional MRI Volumes into Two-Dimensional Slices}
 
-The original fetal diffusion MRI data consisted of three-dimensional image volumes, with each dynamic accompanied by a corresponding reference brain segmentation mask. For the development of the two-dimensional segmentation and artifact classification framework, these volumes were converted into individual two-dimensional slices. Each MRI dynamic and its corresponding brain mask were processed along the same spatial axis, preserving the anatomical correspondence between the extracted images and reference segmentations.
+For the two-dimensional framework, each MRI dynamic and its corresponding reference brain mask were sliced along the same spatial axis, retaining image--mask correspondence.
 
 The MRI volumes were loaded in NIfTI format using NiBabel. The through-plane dimension was identified from the volume dimensions, using an expected slice count of 36 where applicable. If this dimension could not be uniquely identified, the smallest spatial dimension was selected as the slicing axis, provided that it was unambiguous. Individual slices were extracted in their original order and stored as 32-bit floating-point arrays, retaining the MRI intensity information. The corresponding brain masks were extracted using the same slice indices and converted into binary representations, with foreground values indicating the fetal brain and background values indicating the surrounding regions.
 
-This process transformed each three-dimensional MRI dynamic into a sequence of two-dimensional images with corresponding reference brain masks. The original subject, dynamic, and slice associations were retained to support subsequent segmentation training and dynamic-level quality assessment. Further preprocessing, including image normalization, resizing, and selection of relevant slices, was performed according to the requirements of the segmentation and classification models and is described in the following subsections.
+Subject, dynamic, and slice identifiers were retained for downstream model training and dynamic-level evaluation.
 
 \subsubsection{Image Normalization and Resizing}
 
@@ -111,13 +111,13 @@ For artifact classification, brain-centered regions of interest were extracted f
 
 \subsubsection{Artifact Labeling and Slice Selection}
 
-The original fetal diffusion MRI dataset contained image-quality annotations assigned at the dynamic level, indicating whether each three-dimensional acquisition was considered good (0), artifact-corrupted (1), or uncertain ($-1$). For the two-dimensional artifact classification framework, these annotations were associated with the extracted image slices using their corresponding subject and dynamic identifiers. Dynamics with uncertain quality annotations were excluded from binary classification, leaving only acquisitions with known good or artifact labels.
+Quality annotations were joined to extracted slices using subject and dynamic identifiers. Only dynamics with known binary Good (0) or Artifact (1) labels were retained; uncertain ($-1$) annotations were excluded as described in Section~\ref{sec:data-preparation}.
 
 The selection of slices for artifact classification was based on the anatomical extent of the fetal brain and a predefined slice range. Brain presence was determined using the corresponding reference segmentation masks. For each dynamic, the number of foreground pixels was calculated for every slice and expressed relative to the maximum brain-mask area observed within that dynamic. Slices with insufficient brain content were identified and excluded from the classification dataset. In addition, the classification analysis was restricted to slice indices 8--25, inclusive, to concentrate on a consistent range of brain-containing image sections.
 
 Since the original artifact annotations described the quality of complete MRI dynamics rather than individual slices, weak supervision was employed to construct slice-level classification targets. Each eligible slice inherited the binary quality label of its corresponding dynamic. Thus, slices extracted from good dynamics were labeled as good, whereas eligible slices from artifact-corrupted dynamics were labeled as artifact. These inherited labels were used as training targets for the two-dimensional classifier without assuming that the artifact was necessarily visible in every selected slice.
 
-The resulting classification dataset comprised 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. These labels represented the quality of the source dynamics and were therefore treated as weak slice-level annotations rather than independently verified spatial artifact labels.
+The resulting classification population was subject-partitioned as described below; its exact sample counts and class distribution are stated once in the Dataset Partitioning subsection.
 
 \subsubsection{Dataset Partitioning}
 
@@ -127,7 +127,7 @@ The dataset was divided using a two-stage stratified random splitting procedure,
 
 For brain segmentation, the training dataset contained 9,264 prepared slices, including 8,099 slices with reference brain regions and 1,165 without brain regions. The validation and test datasets each contained 3,168 slices, of which 2,028 and 1,902 contained brain regions, respectively. Brain-containing slices were retained for segmentation training, while a subset of slices without foreground brain masks was included to represent background-only images. The validation and test sets retained both brain-containing and background-only slices for evaluation.
 
-For artifact classification, an additional selection procedure restricted the data to brain-containing slices within the predefined slice range. This resulted in 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The corresponding distributions of good and artifact-labeled slices were 4,996 and 1,082 for training, 1,405 and 101 for validation, and 1,258 and 271 for testing, respectively. The same subject-level separation was maintained across the segmentation and classification experiments.
+The additional brain-presence and slice-index selection yielded 6,078 training slices (4,996 Good; 1,082 Artifact), 1,506 validation slices (1,405 Good; 101 Artifact), and 1,529 test slices (1,258 Good; 271 Artifact). The same subject-level partition assignments were maintained throughout.
 
 \subsection{MobileNetV3-U-Net Fetal Brain Segmentation}
 
@@ -319,7 +319,7 @@ The initial volumetric investigations comprised custom 3D U-Net segmentation fol
 
 The two-dimensional framework comprised MobileNetV3-Large U-Net brain localization and EfficientNet-B0 artifact classification using brain-centered crops. The documented cohort contained 24 subject groups, partitioned into 16 training, four validation, and four test groups. These predefined assignments were maintained across the two-dimensional processing stages. The original split-generation algorithm and exact subject identifier mapping have not been independently verified.
 
-The prepared segmentation data included brain-containing and background-only slices. The reported prepared segmentation inventories contained 9,264 training slices, 3,168 validation slices, and 3,168 test slices, including 8,099, 2,028, and 1,902 brain-containing slices, respectively. These inventories are distinct from the selected brain-containing classification population of 6,078 training, 1,506 validation, and 1,529 test slices. Within the classification population, Good/Artifact inherited-label counts were 4,996/1,082 for training, 1,405/101 for validation, and 1,258/271 for testing. All classification labels reflected the annotation of the source dynamic, not independent judgments of artifact presence within an individual slice.
+The prepared segmentation inventory (including background-only images) was distinct from the restricted brain-containing classification dataset. Their exact counts are given in Section~\ref{sec:data-preparation}; this distinction was maintained when defining evaluation denominators.
 
 The evaluation investigated segmentation accuracy, slice-level artifact discrimination, the influence of oracle versus predicted brain cropping, dynamic-level aggregation and failure handling, comparison with the volumetric approach, and processing latency. Validation metrics were used for model selection in documented training procedures. Exploratory threshold searches were distinguished from operating points demonstrably fixed before an independent test evaluation.
 
@@ -363,17 +363,12 @@ The effect of automatic fetal brain localization was investigated using referenc
 
 Two comparison types were distinguished. Applying a fixed classifier to paired oracle and predicted crops for the same subject, dynamic, and slice more directly examines input-crop effects. Evaluating separately trained oracle-crop and predicted-crop classifiers instead compares broader training-and-inference variants; any performance difference cannot be attributed solely to segmentation error.
 
-The documented test population contained 1,529 oracle-eligible slices, of which 1,499 produced usable predicted crops and 30 produced no predicted crop. Matched-crop classification metrics therefore use a different denominator from an end-to-end evaluation that also retains localization failures. Crop availability was further distinguished from localization accuracy because a nonempty but incorrect mask can still generate a crop. The precise classifier-checkpoint correspondence for every archived comparison remains unverified and was not assumed.
+As established in the ROI-generation procedure, predicted cropping may fail and crop availability does not guarantee anatomical accuracy. Matched-crop classification was restricted to observations with both crop types, whereas a complete pipeline evaluation must also account for unavailable inputs. The precise checkpoint correspondence for every archived comparison remains unverified.
 
 \subsection{Dynamic-Level Quality Assessment and 2D Versus 3D Comparison}
 \label{subsec:dynamic-evaluation}
 
-Dynamic-level analysis used the original acquisition-quality annotations as reference labels, with Artifact designated as positive. Multiple slice probabilities for each dynamic were examined using the mean, median, maximum, and recorded top-$k$ aggregation variants. For $n$ available artifact probabilities $p_1,\ldots,p_n$, two defined aggregations were
-\begin{equation}
-A_{\mathrm{mean}}=\frac{1}{n}\sum_{i=1}^{n}p_i,\qquad
-A_{\mathrm{max}}=\max_{1\leq i\leq n}p_i.
-\end{equation}
-The archived evaluation also identifies \texttt{top2}, \texttt{top3}, and \texttt{top5} settings, but their exact calculation could not be independently established from the available code excerpts. Aggregate scores were examined at candidate probability thresholds, with confusion-matrix measures computed per dynamic rather than per slice.
+Dynamic-level evaluation used acquisition-quality annotations as reference labels, with Artifact designated as positive. The aggregation functions and available-score handling are defined in the Dynamic-Level Quality Assessment section above. Candidate thresholds were assessed using one confusion-matrix observation per dynamic rather than per slice. The available evidence did not independently establish the precise top-$k$ calculation in all archived variants.
 
 Localization failures were recorded separately because slices without usable predicted brain crops could not yield ordinary classifier probabilities. Failure-aware decision configurations were explored, but their exact numerical combination with aggregation thresholds has not been independently reconstructed. Consequently, exploratory operating-point searches were not represented as final thresholds established before test evaluation. The separate sequential demonstration used slice-triggered early stopping and was not assumed to implement the same full-dynamic aggregation rule.
 
@@ -384,7 +379,7 @@ Other reported dynamic-level populations, including the 88-dynamic two-dimension
 \subsection{Computational Evaluation and Software Environment}
 \label{subsec:computational-evaluation}
 
-Computational performance was assessed using stage-level latency measurements for segmentation preprocessing, segmentation inference, brain-crop preparation, classifier inference, and dynamic-level aggregation. The recorded two-dimensional slice benchmark included 1,529 candidate test slices, while classifier inference was available for the 1,499 slices with successful predicted crops. Mean, median, upper-percentile, and maximum stage durations were used to characterize typical and less frequent longer processing times.
+Computational evaluation followed the stage-level timing protocol described under Sequential Quality-Control Implementation. The benchmark distinguished all candidate slices from those with a valid classifier input, and retained stage-specific timing summaries rather than conflating them with scanner-to-decision latency.
 
 The sequential demonstration also recorded the number of slices examined before either a classifier artifact trigger or, when enabled, a localization-failure trigger. Actual measured durations were distinguished from estimated time savings based on unprocessed slices. Benchmark values were interpreted according to their documented boundaries: disk I/O, checkpoint loading, visualization delays, and data transfer were not assumed to be included unless explicitly measured. Earlier three-dimensional timing records did not consistently encompass the same stages and therefore were not treated as directly comparable complete-pipeline runtimes.
 

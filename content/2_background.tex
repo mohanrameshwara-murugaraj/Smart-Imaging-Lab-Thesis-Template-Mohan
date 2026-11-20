@@ -185,13 +185,13 @@ Image usability is task-dependent rather than an intrinsic binary property of th
 Beyond recognizing visible degradation, an automated system must produce decisions that remain interpretable under uncertain supervision and multi-stage processing. The main methodological challenges concern the relation between available evidence, prediction scores, and the actual decision being evaluated \autocite{roecher2024motion,sanchez2024fetmrqc}.
 
 \paragraph{Evidence and Annotation Granularity}
-A prediction can only use the visual information present in its input, whereas a ground-truth quality label may refer to a larger acquisition unit. Dynamic-level labels used to train or assess individual slices therefore create a mismatch between the target and the evidence available. This issue is identified in the Problem Statement; its consequences must be quantified using the annotation and evaluation protocol described in Chapter 4, rather than assuming that every disagreement represents visually incorrect artifact recognition.
+A mismatch between the granularity of available labels and the visual evidence in a classifier input can limit the interpretation of supervised predictions. The formal label-inheritance assumption and its statistical implications are addressed in Section 3.5.3.
 
 \paragraph{End-to-End Reliability}
 When classification follows segmentation and region extraction, evaluation of a classifier on reference crops does not characterize the complete automated system. An end-to-end assessment must account for the distribution of generated crops, failures that prevent predictions, and downstream decision rules. The image-level consequences of inaccurate localization were described in Section 3.3.2; the additional issue here is how those events are represented in system-level performance reporting.
 
 \paragraph{Confidence, Imbalance, and Decision Criteria}
-A classifier output threshold defines an operational decision, but the score should not be assumed to be a calibrated probability of image usability. Moreover, class imbalance can make accuracy appear favorable despite poor sensitivity for corrupted acquisitions. Reliability therefore requires reporting complementary error measures and examining decision thresholds in a manner consistent with the intended quality-control objective. Mathematical definitions of these measures are provided in Section 3.5.
+Model scores require an explicit decision rule, and uncertainty about the score's interpretation matters when translating predictions into quality-control actions. The effects of class prevalence and threshold selection are defined in Section 3.5 rather than repeated here.
 
 The distinction between image-level prediction, missing outputs, and dynamic-level quality decisions is especially important for sequential slice-wise processing. How such outputs are combined is a methodological choice to be tested in Chapters 4 and 5, not a property guaranteed by the classifier architecture.
 

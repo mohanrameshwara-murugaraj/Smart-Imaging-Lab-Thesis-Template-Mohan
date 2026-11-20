@@ -302,7 +302,168 @@ Parameter count and theoretical operation count do not fully determine measured 
 In this thesis, MobileNetV3-based features support two-dimensional brain segmentation, EfficientNet-B0 supports slice-wise artifact classification, and a three-dimensional ResNet supports dynamic-level classification. Chapter 4 specifies the implemented network configurations and Chapter 5 reports their experimental evaluation.
 
 \section{Model Evaluation Principles}
+
 \subsection{Segmentation Evaluation Metrics}
+
+Medical image segmentation is evaluated by comparing a predicted mask with a corresponding reference annotation. In binary foreground--background segmentation, true positives (TP) are foreground elements correctly identified, false positives (FP) are background elements incorrectly identified as foreground, false negatives (FN) are omitted reference foreground elements, and true negatives (TN) are correctly identified background elements. Overlap measures and foreground/background detection rates provide complementary information about segmentation quality \autocite{isensee2021nnunet,payette2023feta}.
+
+\paragraph{Dice Similarity Coefficient}
+The Dice similarity coefficient (DSC) quantifies foreground overlap:
+\begin{equation}
+\mathrm{DSC}=\frac{2TP}{2TP+FP+FN}
+=\frac{2|P\cap G|}{|P|+|G|},
+\end{equation}
+where $P$ and $G$ denote the predicted and reference foreground sets, respectively. When defined, DSC lies between zero and one; one denotes identical masks. Dice does not depend directly on TN, which is helpful when background dominates an image. Nevertheless, similar Dice values can result from spatially different errors, and Dice alone cannot establish the usefulness of a predicted region for downstream processing.
+
+\paragraph{Intersection over Union}
+Intersection over Union (IoU), also called the Jaccard index, measures the fraction of the combined foreground region shared by both masks:
+\begin{equation}
+\mathrm{IoU}=\frac{TP}{TP+FP+FN}
+=\frac{|P\cap G|}{|P\cup G|}.
+\end{equation}
+For a single binary-mask comparison with defined denominators, the overlap measures satisfy
+\begin{equation}
+\mathrm{DSC}=\frac{2\,\mathrm{IoU}}{1+\mathrm{IoU}}.
+\end{equation}
+The relationship also applies to metrics computed from the same pooled confusion counts, but not necessarily to independently averaged per-image Dice and IoU values because the transformation is nonlinear.
+
+\paragraph{Sensitivity and Specificity}
+Foreground sensitivity, also called recall, is the proportion of reference foreground correctly detected:
+\begin{equation}
+\mathrm{Sensitivity}=\frac{TP}{TP+FN}.
+\end{equation}
+Specificity measures the proportion of reference background correctly excluded:
+\begin{equation}
+\mathrm{Specificity}=\frac{TN}{TN+FP}.
+\end{equation}
+Sensitivity is informative about omitted brain regions; specificity describes erroneous inclusion of background. In an image containing relatively little foreground, the large number of correctly identified background pixels can make specificity high despite consequential boundary or localization errors. Both rates should therefore be interpreted together with foreground-overlap measures.
+
+\paragraph{Aggregation and Empty Masks}
+Segmentation scores may be computed separately for each image and then averaged, or calculated from confusion counts pooled over the dataset. The two approaches assign different effective weights to observations and need not produce identical summaries. The reported aggregation method is therefore part of the evaluation definition.
+
+When both masks are empty, the conventional Dice and IoU expressions have zero denominators and require an explicit convention. An empty prediction against a nonempty reference denotes a failed foreground detection. Such failures require particular attention when segmentation is used to generate regions of interest for a downstream model. The actual empty-mask conventions and aggregation procedures used in this thesis are specified in Chapter 4; their results are reported in Chapter 5.
+
 \subsection{Classification Evaluation Metrics}
+
+For binary artifact classification, the positive class denotes an artifact-corrupted observation and the negative class an acceptable observation. The evaluation unit may be an individual slice or an entire diffusion dynamic; the meaning of a metric depends on that unit. The confusion matrix is represented here with reference classes as rows and predicted classes as columns:
+\begin{equation}
+\mathbf{C}=
+\begin{bmatrix}
+TN & FP\\
+FN & TP
+\end{bmatrix}.
+\end{equation}
+A true positive identifies a corrupted observation correctly; a false negative misses a corrupted observation. A false positive flags an acceptable observation, and a true negative correctly retains an acceptable observation.
+
+\paragraph{Accuracy, Precision, and F1-Score}
+Accuracy is the proportion of all predictions that are correct:
+\begin{equation}
+\mathrm{Accuracy}=\frac{TP+TN}{TP+TN+FP+FN}.
+\end{equation}
+Precision, or positive predictive value, is the proportion of predictions flagged as corrupted that agree with the positive reference label:
+\begin{equation}
+\mathrm{Precision}=\frac{TP}{TP+FP}.
+\end{equation}
+Recall and specificity retain the mathematical definitions in Section 3.5.1, but refer here to corrupted and acceptable observations instead of foreground and background elements. A false negative represents missed corruption; a false positive represents unnecessary rejection of an observation considered acceptable by the reference labels.
+
+The F1-score combines precision and recall through their harmonic mean:
+\begin{equation}
+F_1=\frac{2\,\mathrm{Precision}\,\mathrm{Recall}}
+{\mathrm{Precision}+\mathrm{Recall}}
+=\frac{2TP}{2TP+FP+FN}.
+\end{equation}
+F1 excludes true negatives from its direct definition, so it should be considered alongside specificity. Precision additionally depends on positive-class prevalence, and high accuracy can conceal poor artifact sensitivity when the positive class is uncommon.
+
+\paragraph{ROC-AUC and Precision--Recall Evaluation}
+Continuous classifier scores are converted to binary predictions through a threshold. The receiver operating characteristic (ROC) curve plots sensitivity against the false positive rate (FPR) over varying thresholds, where
+\begin{equation}
+\mathrm{FPR}=\frac{FP}{FP+TN}=1-\mathrm{Specificity}.
+\end{equation}
+The area under the ROC curve (ROC-AUC) summarizes ranking discrimination independently of the choice of a single operating threshold. A value of $0.5$ represents chance-level discrimination in the usual binary ranking interpretation, while $1$ indicates perfect separation. ROC-AUC does not establish the sensitivity or specificity at the threshold actually deployed.
+
+A precision--recall (PR) curve plots precision against recall across thresholds and is especially informative when positive observations are relatively uncommon. Its baseline depends on positive-class prevalence. The area obtained by trapezoidal integration of the PR curve is not generally identical to average precision, which uses a different summarization convention. The precise computational definition must therefore accompany any reported PR-AUC result.
+
+\paragraph{Decision Thresholds and Undefined Cases}
+Threshold selection changes the balance between missed corruption and unnecessary rejection. Choosing a threshold using the test set can bias the reported operating-point performance; it should instead be selected using separate validation data where possible. Precision is undefined when there are no positive predictions, and sensitivity is undefined when there are no reference positives. Any implementation convention for such cases should be stated.
+
+Slice-level classification scores measure agreement with slice-level evaluation targets and cannot, without a defined aggregation and reference protocol, be interpreted as dynamic-level classification performance. The evaluation levels and decision procedures used in the present research are documented in Chapter 4.
+
 \subsection{Class Imbalance and Label Uncertainty}
+
+Classification performance depends on the relative frequencies of annotated classes and on how closely those labels describe the observations supplied to the model. These are distinct concerns: imbalance describes class distribution, whereas label uncertainty describes the relationship between an annotation and the relevant image information.
+
+\paragraph{Class Imbalance}
+For $N_+$ annotated positive observations and $N_-$ negative observations, the positive-class prevalence is
+\begin{equation}
+\pi=\frac{N_+}{N_++N_-}.
+\end{equation}
+When positive observations are comparatively rare, minimizing an unweighted training loss can place greater aggregate emphasis on the majority class. High overall accuracy may then coexist with limited sensitivity to corrupted acquisitions. The classification metrics defined in Section 3.5.2 make these outcomes visible without implying that a particular balancing strategy is always preferable.
+
+Possible interventions include resampling, class-weighted learning, and operating-threshold adjustment. They affect different aspects of training or decision-making and must be evaluated rather than assumed beneficial.
+
+\paragraph{Class-Weighted Learning}
+One possible training objective is weighted binary cross-entropy:
+\begin{equation}
+\mathcal{L}_{\mathrm{WBCE}}=
+-\frac{1}{N}\sum_{i=1}^{N}
+\left[w_+y_i\log(p_i)+w_-(1-y_i)\log(1-p_i)\right],
+\end{equation}
+where $y_i\in\{0,1\}$ is a reference class, $p_i$ the model's predicted positive-class probability, and $w_+$ and $w_-$ the positive and negative weights. Changing class weights may alter the balance of false negatives and false positives and can affect calibration. The presence of this general formulation does not imply it was used in the experiments; actual loss functions are reported in Chapter 4.
+
+\paragraph{Annotation Granularity and Weak Supervision}
+A quality label assigned to a complete diffusion dynamic does not necessarily verify the visual artifact status of every constituent slice. Let $Y_d$ represent the observed label for dynamic $d$, and $y_{d,s}$ the independently assessed but potentially unavailable status of slice $s$. Inheriting the dynamic label generates a weak slice-level training target
+\begin{equation}
+\widetilde{y}_{d,s}=Y_d,
+\end{equation}
+without establishing that $y_{d,s}=Y_d$ for every slice.
+
+Such labels are not automatically incorrect: the underlying slice-level status can be unknown, and some degradation may only be identifiable across multiple images. Metrics calculated against inherited targets quantify agreement with those targets, not necessarily with independently established slice-level artifact status. Class reweighting does not resolve this uncertainty.
+
+\paragraph{Evaluation Independence}
+Slices drawn from the same dynamic or examination can share anatomy and acquisition conditions. Consequently, distributing related observations across training and test sets may yield optimistic generalization estimates. Evaluation on unseen slices, dynamics, examinations, and subjects supports different claims, and the grouping used to construct each split must be documented. Statistical uncertainty may also be understated when correlated slices are treated as independent observations.
+
+The actual label inheritance, data splits, and training choices in this thesis are described in Chapter 4. Their effects on the interpretation of reported results are discussed in Chapters 5 and 6.
+
 \subsection{Computational Performance and Inference Latency}
+
+Computational evaluation concerns both the time required to produce a prediction and the resources needed to execute the full processing workflow. For acquisition-oriented artifact assessment, processing speed must be interpreted in relation to when the required input measurements become available.
+
+\paragraph{Model Inference Latency}
+Inference latency is the elapsed time within explicitly defined model execution boundaries:
+\begin{equation}
+T_{\mathrm{infer}}=t_{\mathrm{end}}-t_{\mathrm{start}}.
+\end{equation}
+A measured forward pass need not include data loading, preprocessing, device transfers, or postprocessing. Comparisons between experiments are meaningful only when timing boundaries and hardware conditions are sufficiently consistent.
+
+\paragraph{End-to-End Pipeline Time}
+For a sequential preprocessing--segmentation--crop--classification pipeline, elapsed processing time can be decomposed conceptually as
+\begin{equation}
+T_{\mathrm{pipeline}}=
+T_{\mathrm{pre}}+T_{\mathrm{seg}}+T_{\mathrm{ROI}}+
+T_{\mathrm{cls}}+T_{\mathrm{overhead}},
+\end{equation}
+where the terms represent preprocessing, segmentation, region extraction, classification, and additional coordination or transfer costs. This sum assumes non-overlapping stages. When stages execute concurrently, observed wall-clock latency must be measured directly rather than inferred by adding their standalone durations.
+
+\paragraph{Throughput and Benchmarking Conditions}
+For $N$ observations processed over elapsed time $T$, throughput is
+\begin{equation}
+R=\frac{N}{T}.
+\end{equation}
+Throughput measures processing capacity, whereas latency refers to the elapsed time associated with a prediction. Batching may raise throughput without equivalently reducing single-observation latency.
+
+Measured performance also depends on input dimensions, numerical precision, hardware, software framework, memory transfers, and execution concurrency. In asynchronous GPU execution, naive host-side timing may omit the time needed to complete queued work; appropriate synchronization or device-timing methods are necessary for valid measurements. Initialization and warm-up can also affect short benchmarks. Only the measurement practices actually documented in the experimental records should be attributed to this thesis.
+
+\paragraph{Sequential Decision Delay and Real-Time Feasibility}
+The time at which a decision becomes possible depends on the arrival of the required input data as well as computation. With consistently defined, non-overlapping timing intervals, a simplified decision-delay expression is
+\begin{equation}
+T_{\mathrm{decision}}=
+T_{\mathrm{availability}}+
+T_{\mathrm{processing}}+
+T_{\mathrm{decision\ overhead}}.
+\end{equation}
+Here, availability denotes the time needed for the required input measurements to become accessible; processing covers their analysis; and decision overhead includes any final decision computation or coordination. If acquisition and processing overlap, the actual elapsed delay must be measured under the relevant arrival schedule.
+
+A slice-level model may evaluate an observation before the full dynamic is available, but an earlier reliable dynamic-level decision is not guaranteed. That depends on the number of slices needed and the chosen aggregation rule.
+
+Real-time feasibility is defined relative to the acquisition system's timing constraints, not by a universal neural-network inference threshold. Fast offline GPU processing does not demonstrate successful scanner integration or account for acquisition interfaces and communications. The present research evaluates retrospective processing and offline acquisition-workflow simulations; it does not claim deployment on a live MRI scanner. The experimental timing methods and their limitations are presented in Chapters 4--6.
+

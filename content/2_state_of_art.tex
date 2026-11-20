@@ -19,7 +19,7 @@ FetMRQC and HERON therefore address different quality-assessment objectives: ret
 
 Motion affects diffusion MRI at different stages of acquisition: displacement during diffusion encoding can modify the measured signal, while displacement between acquisitions changes anatomical correspondence \autocite{malamateniou2013motion,snoussi2025haitch}. The distinction between these effects is important when evaluating motion-correction and artifact-identification methods.
 
-Motion-related degradation in diffusion MRI can occur both within individual diffusion volumes and between consecutively acquired volumes. Intra-volume motion may produce signal loss, discontinuities between slices, or inconsistencies in the appearance of anatomical structures. Inter-volume motion introduces differences in fetal-brain position and orientation across successive diffusion measurements, complicating their spatial alignment. These effects are particularly problematic when multiple diffusion directions and weighting levels are required for quantitative analysis. Without adequate quality control or correction, corrupted measurements may introduce errors into diffusion-derived parameters and subsequent microstructural analysis \autocite{snoussi2025haitch,avilesverdera2025heron}.
+These disturbances can create both signal inconsistencies and spatial misalignment across diffusion measurements, complicating downstream quantitative analysis \autocite{snoussi2025haitch,avilesverdera2025heron}. Their physical mechanisms are described in Section 3.3.1; here the focus is on published correction and assessment approaches.
 
 In addition to motion, diffusion MRI is affected by spatial distortions associated with magnetic field inhomogeneities and the characteristics of echo-planar imaging. Susceptibility differences between tissues and surrounding air can contribute to geometric distortions, while fetal movement may alter the relationship between anatomy and the underlying distortion field. These effects complicate fetal diffusion MRI reconstruction because the acquired images may differ both in anatomical position and spatial geometry. Distinguishing motion-related degradation from other acquisition-related variations is therefore an important consideration when designing automated artifact-assessment methods \autocite{snoussi2025haitch}.
 
@@ -31,9 +31,7 @@ An important characteristic of HAITCH is that artifact handling forms part of a 
 
 Prospective reacquisition is a complementary strategy to retrospective reconstruction: rather than compensating for corrupted information after acquisition, it seeks to identify measurements while they may still be repeated. HERON provides an example of this strategy; the implementation and validation are reviewed in Section 2.5 \autocite{avilesverdera2025heron}.
 
-Reconstruction and acquisition-oriented quality control should not be conflated: one seeks a usable reconstructed dataset, whereas the other determines which acquired measurements merit repeating.
-
-The distinction also motivates evaluating whether learned artifact classification can support reliable quality decisions using individual slices or complete diffusion volumes.
+These methods solve related but distinct tasks; their implications for the research gap are summarized in Section 2.6.
 
 \section{Deep Learning-Based Fetal Brain Segmentation}
 
@@ -73,7 +71,7 @@ Tan and Le introduced EfficientNet and reported favorable accuracy--efficiency t
 
 Prior classification studies employ differing image representations and annotation criteria, limiting direct comparisons between their reported outcomes. The architectural distinction between two- and three-dimensional convolutions is defined in Section 3.4.1.
 
-A related challenge arises when quality annotations describe complete volumes rather than individual slices. Assigning a volume-level artifact label to every constituent slice assumes that the label is representative of each image. However, artifact severity and visibility may vary spatially, particularly when degradation affects only part of an acquisition. Slice-wise models trained using inherited volume labels may therefore encounter label uncertainty. This limitation must be considered when interpreting classification performance and comparing slice-level predictions with volume-level assessments.
+Annotation schemes also differ between published MRI studies, limiting the direct transfer of performance findings to slice classifiers trained from dynamic-level quality labels. The statistical implications of such weak targets are addressed in Section 3.5.3.
 
 Overall, existing research demonstrates that CNN-based methods can support automated MRI artifact classification using both individual images and complete volumes. Nevertheless, classification performance varies according to artifact characteristics, annotation criteria, imaging modality, and evaluation methodology. The literature motivates the investigation of both volumetric and slice-wise classification architectures for fetal diffusion MRI, while emphasizing the need to evaluate their performance on the specific target data rather than transferring conclusions directly from other MRI applications.
 

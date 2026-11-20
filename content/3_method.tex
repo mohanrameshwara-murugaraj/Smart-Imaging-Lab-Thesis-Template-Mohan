@@ -100,6 +100,7 @@ The MRI volumes were loaded in NIfTI format using NiBabel. The through-plane dim
 Subject, dynamic, and slice identifiers were retained for downstream model training and dynamic-level evaluation.
 
 \subsubsection{Image Normalization and Resizing}
+\label{subsubsec:2d-normalization}
 
 The extracted two-dimensional fetal diffusion MRI slices underwent intensity normalization and spatial resizing to provide consistent inputs for brain segmentation and artifact classification. Since MRI signal intensities vary across acquisitions and diffusion-weighting conditions, a percentile-based normalization procedure was applied to reduce the influence of extreme intensity values while retaining the relative intensity distribution within each image.
 
@@ -110,6 +111,7 @@ Following normalization, the MRI slices were resized to $160 \times 160$ pixels 
 For artifact classification, brain-centered regions of interest were extracted from the original two-dimensional MRI slices using either the reference brain masks or the predicted segmentations. The extracted regions underwent a separate crop-normalization procedure and were resized to $224 \times 224$ pixels using bilinear interpolation. The resulting single-channel images were stored in 32-bit floating-point format, with intensity values constrained to $[0,1]$ before classification. This provided a standardized input representation for the EfficientNet-B0 classifier while restricting the analyzed image region to the localized fetal brain.
 
 \subsubsection{Artifact Labeling and Slice Selection}
+\label{subsubsec:artifact-labeling}
 
 Quality annotations were joined to extracted slices using subject and dynamic identifiers. Only dynamics with known binary Good (0) or Artifact (1) labels were retained; uncertain ($-1$) annotations were excluded as described in Section~\ref{sec:data-preparation}.
 
@@ -179,7 +181,7 @@ After each epoch, segmentation performance was assessed on the validation datase
 
 Following network training, the checkpoint achieving the highest validation Dice similarity coefficient was selected for fetal brain segmentation on unseen two-dimensional diffusion MRI slices. During inference, the trained MobileNetV3-Large U-Net was initialized with its saved model parameters and placed in evaluation mode. Predictions were generated without gradient computation to reduce computational overhead.
 
-Each MRI slice underwent the same intensity normalization and spatial resizing procedures described in Section~3.4.2. The normalized image was resized to $160 \times 160$ pixels and represented as a single-channel tensor before being passed through the segmentation network. The network produced a pixel-wise logit map, which was converted into foreground probabilities using the sigmoid activation function:
+Each MRI slice underwent the same intensity normalization and spatial resizing procedures described in Section~\ref{subsubsec:2d-normalization}. The normalized image was resized to $160 \times 160$ pixels and represented as a single-channel tensor before being passed through the segmentation network. The network produced a pixel-wise logit map, which was converted into foreground probabilities using the sigmoid activation function:
 \begin{equation}
 P(x,y)=\frac{1}{1+e^{-z(x,y)}},
 \end{equation}
@@ -200,6 +202,7 @@ The resulting segmentation masks were used to localize the fetal brain independe
 \subsection{Brain Region Extraction and Cropping}
 
 \subsubsection{Brain Bounding-Box Extraction and Cropping}
+\label{subsubsec:roi-cropping}
 
 The binary fetal brain masks obtained from two-dimensional segmentation were used to extract brain-centered regions of interest (ROIs) from the corresponding original diffusion MRI slices. Cropping retained the image intensities in the selected rectangular region, including surrounding tissue within the crop, rather than multiplying the image by the segmentation mask. This reduced the field of view presented to the artifact classifier while preserving local anatomical context.
 
@@ -232,7 +235,7 @@ The model produced logits for the Good (class 0) and Artifact (class 1) categori
 
 \subsubsection{Classification Dataset and Training}
 
-The artifact-classification targets were inherited from quality annotations assigned to complete MRI dynamics, as described in Section~3.4.3. Each selected brain-containing slice received the Good or Artifact label of its source dynamic. This constituted weak supervision: an artifact-labeled dynamic could contribute individual slices without visually apparent corruption. The subject-separated datasets contained 6,078 training slices (4,996 Good and 1,082 Artifact), 1,506 validation slices (1,405 Good and 101 Artifact), and 1,529 test slices (1,258 Good and 271 Artifact) before exclusion of unsuccessful predicted crops.
+The artifact-classification targets were inherited from quality annotations assigned to complete MRI dynamics, as described in Section~\ref{subsubsec:artifact-labeling}. Each selected brain-containing slice received the Good or Artifact label of its source dynamic. This constituted weak supervision: an artifact-labeled dynamic could contribute individual slices without visually apparent corruption. The subject-separated datasets contained 6,078 training slices (4,996 Good and 1,082 Artifact), 1,506 validation slices (1,405 Good and 101 Artifact), and 1,529 test slices (1,258 Good and 271 Artifact) before exclusion of unsuccessful predicted crops.
 
 Separate experimental variants used reference-mask-assisted (oracle) crops and automatically predicted crops. An early oracle-crop baseline was trained using class-weighted cross-entropy and the AdamW optimizer. The recorded configuration specified a maximum of 50 epochs, a learning rate of $10^{-4}$, weight decay of $10^{-4}$, early-stopping patience of eight epochs, and automatic mixed precision. The class weights were 1.0 for Good and 4.6174 for Artifact, reflecting the imbalance in the training labels. Model selection for this baseline was based on validation precision--recall performance.
 
@@ -359,7 +362,7 @@ Slice-level agreement with inherited labels must not be interpreted as agreement
 \subsection{Oracle Versus Predicted Cropping Comparison}
 \label{subsec:cropping-comparison}
 
-The effect of automatic fetal brain localization was investigated using reference-mask-based (\emph{oracle}) and predicted-mask-based crops. Both were prepared using the same brain bounding-box margin, square-crop construction, padding, normalization, and $224\times224$ resizing procedure described in Section~3.6. The oracle condition provided reference-assisted localization, whereas the predicted condition depended on the segmentation model.
+The effect of automatic fetal brain localization was investigated using reference-mask-based (\emph{oracle}) and predicted-mask-based crops. Both were prepared using the same brain bounding-box margin, square-crop construction, padding, normalization, and $224\times224$ resizing procedure described in Section~\ref{subsubsec:roi-cropping}. The oracle condition provided reference-assisted localization, whereas the predicted condition depended on the segmentation model.
 
 Two comparison types were distinguished. Applying a fixed classifier to paired oracle and predicted crops for the same subject, dynamic, and slice more directly examines input-crop effects. Evaluating separately trained oracle-crop and predicted-crop classifiers instead compares broader training-and-inference variants; any performance difference cannot be attributed solely to segmentation error.
 

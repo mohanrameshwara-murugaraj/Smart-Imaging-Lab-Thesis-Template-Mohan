@@ -49,7 +49,7 @@ The 770-entry dataset was also used in an earlier exploratory custom 3D U-Net ex
 
 For the subsequent 3D artifact-classification pipeline, the recovered classifier dataset contained 600 dynamic-level records from 35 subjects. Of these, 508 were labelled good and 92 were labelled artifact-positive. The dataset was associated with brain-region processing and the custom 3D ResNet classifier.
 
-Although an export containing 600 ResNet predictions was recovered, the relationship between those predictions and the data used for model training and selection has not been fully established. The 600 prediction records are therefore not automatically interpreted as an independent test population. The corresponding performance results are examined with this qualification in Section~4.3.
+Although an export containing 600 ResNet predictions was recovered, the relationship between those predictions and the data used for model training and selection has not been fully established. The 600 prediction records are therefore not automatically interpreted as an independent test population. The corresponding performance results are examined with this qualification in Section~\ref{sec:results_3d_classification}.
 
 \paragraph{Two-dimensional experimental datasets.}
 The 2D pipeline used subject-based data partitioning. For the artifact-classification experiments, the recovered dataset contained 9,113 selected slices from 24 subjects. These were distributed among training, validation, and test subsets containing 16, four, and four subjects, respectively.
@@ -169,7 +169,7 @@ The recovered evidence did not include a complete, verifiable held-out nnU-Net s
 
 This limitation is particularly relevant because the segmentation dataset included overlapping subject identities across its training and test partitions. Even if volume-level test metrics were recovered, their interpretation would need to account for this partitioning structure rather than treating the observations as independent evaluations on previously unseen fetuses.
 
-The quantitative assessment of the final nnU-Net stage is therefore restricted to the documented dataset composition and its role in generating downstream brain-region inputs. Classification results obtained from those inputs are presented separately in Section~4.3.
+The quantitative assessment of the final nnU-Net stage is therefore restricted to the documented dataset composition and its role in generating downstream brain-region inputs. Classification results obtained from those inputs are presented separately in Section~\ref{sec:results_3d_classification}.
 
 \subsection{Qualitative Segmentation and Brain Localization}
 \label{subsec:3d_segmentation_qualitative}
@@ -244,7 +244,7 @@ These measurements describe agreement between the saved predictions and the labe
 
 The earlier development presentations reported approximately 94\% classification accuracy for a volumetric approach. Although this is numerically similar to the 93.5\% accuracy reconstructed here, similarity of aggregate metrics does not establish that both results originated from the same checkpoint, evaluation population, or experimental protocol.
 
-A separate 71-dynamic dataset was recovered for the direct comparison of the 3D and 2D pipelines. That matched population is examined in Section~4.8 rather than combined with the present 600-record analysis.
+A separate 71-dynamic dataset was recovered for the direct comparison of the 3D and 2D pipelines. That matched population is examined in Section~\ref{sec:results_3d_vs_2d} rather than combined with the present 600-record analysis.
 
 \subsubsection{Classification Errors and Observed Limitations}
 \label{subsec:results_3d_classification_errors}
@@ -257,7 +257,7 @@ The recovered records did not provide a verified one-to-one qualitative assessme
 
 A further limitation concerns the independence of evaluation observations. The training implementation described a random dynamic-level split rather than an explicitly subject-disjoint partition, while the recovered prediction export covered the complete 600-record classifier dataset. Without the executed training split and checkpoint-specific evaluation history, it remains unresolved whether individual exported observations were previously encountered during model development.
 
-The results therefore demonstrate that the saved 3D ResNet predictions reproduce a high level of agreement with the available dynamic-quality annotations. However, the reconstructed full-export metrics should not be interpreted as proof of equivalent performance on independent subjects or during prospective acquisition. The matched comparison and the relationship between artifact sensitivity and false-positive decisions are examined further in Section~4.8.
+The results therefore demonstrate that the saved 3D ResNet predictions reproduce a high level of agreement with the available dynamic-quality annotations. However, the reconstructed full-export metrics should not be interpreted as proof of equivalent performance on independent subjects or during prospective acquisition. The matched comparison and the relationship between artifact sensitivity and false-positive decisions are examined further in Section~\ref{sec:results_3d_vs_2d}.
 
 \section{3D Acquisition-Workflow Simulation}
 \label{sec:results_3d_end_to_end}
@@ -286,7 +286,7 @@ An earlier stage of development investigated an offline scanner-workflow simulat
 
 The simulation was intended to approximate the sequence of processing steps that would be required after the availability of a newly acquired diffusion dynamic. The reported logging framework included file arrival, processing initiation, processing completion, and the resulting quality prediction. A Streamlit-based upload-and-predict interface was also presented as an interactive demonstration of the volumetric classification workflow.
 
-The historical simulation also exposed a computational bottleneck in volumetric segmentation. Reported processing times, their differing measurement boundaries, and their comparison with later benchmarks are examined in Section~4.10.
+The historical simulation also exposed a computational bottleneck in volumetric segmentation. Reported processing times, their differing measurement boundaries, and their comparison with later benchmarks are examined in Section~\ref{sec:results_computational_performance}.
 
 Importantly, the folder-watching simulation processed image files after they became available. It did not demonstrate inference during MRI data acquisition, direct communication with the scanner's acquisition controller, or automated interruption and reacquisition of corrupted dynamics. The recorded experiment therefore supports offline processing feasibility, but not prospective clinical or scanner-integrated operation.
 
@@ -295,7 +295,7 @@ Importantly, the folder-watching simulation processed image files after they bec
 
 The available records identified failures at two different stages of the volumetric workflow: unsuccessful brain localization during exploratory segmentation and incorrect artifact-quality decisions in the recovered classifier predictions.
 
-The two unsuccessful brain-localization cases recorded in the exploratory five-volume inspection are detailed in Section~4.2. Their implication for the end-to-end workflow is that an unusable mask can prevent ROI extraction. These early custom U-Net observations cannot establish the failure frequency of the later nnU-Net component.
+The two unsuccessful brain-localization cases recorded in the exploratory five-volume inspection are detailed in Section~\ref{subsec:historical_3d_segmentation}. Their implication for the end-to-end workflow is that an unusable mask can prevent ROI extraction. These early custom U-Net observations cannot establish the failure frequency of the later nnU-Net component.
 
 At the classification stage, the recovered 600-record ResNet prediction export contained 39 false-positive artifact decisions and no false-negative decisions. These errors occurred after construction of the classifier input dataset. Their underlying anatomical or image-quality causes could not be established from the prediction records alone.
 
@@ -484,7 +484,7 @@ The matched results therefore did not establish uniform superiority of either cr
 
 The ROC-AUC values of 0.6440 and 0.6335 indicate limited discrimination against the inherited slice-level targets. No statistical significance or confidence interval for the paired difference was established from the reported analysis, and the modest numerical difference should not be interpreted as a demonstrated advantage.
 
-Importantly, both classifiers were evaluated against weak labels derived from dynamic-level annotations. Furthermore, the matched analysis excluded the 30 slices for which automatic cropping failed. The effect of segmentation reliability, including these excluded observations and anatomically inaccurate but technically successful crops, is examined in Section~4.7.
+Importantly, both classifiers were evaluated against weak labels derived from dynamic-level annotations. Furthermore, the matched analysis excluded the 30 slices for which automatic cropping failed. The effect of segmentation reliability, including these excluded observations and anatomically inaccurate but technically successful crops, is examined in Section~\ref{sec:results_roi_reliability}.
 
 Overall, the classification experiments demonstrate that the 2D pipeline was able to produce artifact-probability estimates from both oracle and predicted brain crops, but that artifact sensitivity remained limited. The results highlight the distinction between successful fetal-brain localization, successful crop generation, and reliable classification of artifact-positive image content.
 
@@ -581,7 +581,7 @@ These cases establish two separate outcomes: missing crops after empty-mask pred
 
 The two-dimensional artifact-classification framework generated predictions for individual MRI slices, whereas the original quality annotations were assigned to complete diffusion dynamics. A subsequent evaluation therefore examined the aggregation of slice-level probabilities into dynamic-level quality decisions. In addition to the original aggregation output, two failure-aware policies were evaluated to determine how unsuccessful brain segmentation and crop generation affected the final decisions.
 
-The recovered results included individual predictions for 88 test dynamics and a separate validation-based search over aggregation methods and decision thresholds. These experiments are presented separately from the matched 71-dynamic 3D-versus-2D comparison described in Section~4.8.
+The recovered results included individual predictions for 88 test dynamics and a separate validation-based search over aggregation methods and decision thresholds. These experiments are presented separately from the matched 71-dynamic 3D-versus-2D comparison described in Section~\ref{sec:results_3d_vs_2d}.
 
 \subsection{Dynamic-Level Aggregation Performance}
 \label{subsec:results_dynamic_aggregation}
@@ -685,7 +685,7 @@ The recovered evidence established retrospective slice-to-dynamic aggregation an
 
 Consequently, no quantitative sequential detection rate, number of processed slices before stopping, or latency reduction attributable to an early-decision rule can be reported from the available evidence.
 
-The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~4.10, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
+The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~\ref{sec:results_computational_performance}, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
 
 \section{Matched Comparison of 3D and 2D Pipelines}
 \label{sec:results_3d_vs_2d}

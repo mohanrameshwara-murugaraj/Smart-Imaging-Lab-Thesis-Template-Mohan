@@ -54,17 +54,13 @@ Total & 836 & 100.0\% \\
 
 Uncertain annotations were excluded when preparing binary artifact-classification targets, leaving 770 known-label annotation entries. This number describes label availability, rather than independently verifying the availability of 770 matched MRI--mask files.
 
-The original dynamic-level labels could be attached directly to 3D classifier observations. For the 2D classifier, each eligible slice inherited its parent dynamic's known quality label. Thus, an individual slice from an artifact-positive dynamic received a positive target even when visible corruption was not established for that slice. Such labels are \emph{weak slice-level supervision}, not independently annotated slice-level artifact ground truth. The implications are formalized in Section 3.5.3 and the experimental implementation is described below.
+The quality annotations describe complete dynamics, so they do not independently establish artifact visibility in each constituent slice. The 2D experiments used inherited labels, referred to as \emph{weak slice-level supervision}; their precise target assignment and implications for class imbalance are specified in Section~\ref{sec:data-preparation}.
 
 \subsection{Dataset Composition and Selection Criteria}
 
-Distinct experimental populations were prepared for preliminary volumetric segmentation, nnU-Net segmentation, volumetric artifact classification, 2D brain segmentation, and 2D artifact classification. Their sizes should not be pooled or interpreted as interchangeable.
+Separate experimental populations were assembled for preliminary 3D segmentation, nnU-Net segmentation, 3D artifact classification, 2D brain segmentation, and 2D artifact classification. Availability of image--mask pairs, anatomical content, binary quality labels, and the intended prediction unit determined eligibility for each experiment. These populations were not interchangeable: the original annotation inventory does not describe the total number of usable images in any one analysis.
 
-The preliminary custom 3D U-Net and subsequent nnU-Net experiments drew from a recorded population of 770 volumetric MRI--mask entries, using different allocations. The recovered 3D ResNet classifier dataset contained 600 dynamic-level records, but their exact training--evaluation provenance was not fully established.
-
-For the later 2D framework, 24 subject groups were assigned to training, validation, and test partitions comprising 16, four, and four subjects. The 2D segmentation dataset included brain-present as well as background-only slices, whereas the classifier required a restricted population of selected brain-containing slices.
-
-The 2D classification selection applied an anatomical brain-presence criterion and restricted the eligible slice indices to 8--25, inclusive. This yielded 6,078 training slices, 1,506 validation slices, and 1,529 test slices. Detailed loading and preprocessing, dataset inventories, partition construction, exclusion rules, and handling of label imbalance follow in Section~\ref{sec:data-preparation}.
+The 3D experiments used prepared volumetric samples, whereas the 2D pipeline used subject-separated slice populations. The segmentation dataset retained images with and without reference brain foreground, while the artifact classifier considered a restricted range of brain-containing slices. Exact entry counts, inclusion criteria, and split assignments are reported together in Section~\ref{sec:data-preparation}.
 
 \section{Data Preparation and Experimental Partitioning}
 \label{sec:data-preparation}
@@ -91,7 +87,7 @@ I_{\mathrm{norm}}(x,y,z)=\frac{I(x,y,z)}{I_{\max}},\qquad I_{\max}>0.
 The MRI volume and corresponding reference mask were then padded with zeros at the upper end of each spatial dimension to obtain dimensions divisible by eight. Identical spatial padding preserved the alignment of input and segmentation target. This preparation accommodated three successive downsampling operations without resizing the original volumetric anatomy.
 
 \paragraph{nnU-Net v2.}
-The nnU-Net experiments used the framework's dataset-specific automated planning and preprocessing, rather than the custom U-Net's manual intensity scaling and padding configuration. The documented \texttt{3d\_fullres} setup specified target spacing of $3\times3\times3$\,mm$^3$ and patch size $40\times160\times160$ voxels. The model and configuration are described in Section 4.4.
+The nnU-Net experiments used the framework's dataset-specific automated planning and preprocessing rather than the custom U-Net's manual intensity scaling and padding. The resulting full-resolution model configuration, including target voxel spacing and patch size, is specified in Section~\ref{subsec:3d_nnunet_architecture}.
 
 \paragraph{2D brain segmentation.}
 Intensity normalization was performed independently for each extracted MRI slice. The 1st and 99th intensity percentiles were computed from finite, non-zero pixels when at least 32 such values were available; otherwise, all finite values were considered. Intensities were clipped to these bounds and scaled to $[0,1]$:
@@ -105,7 +101,7 @@ The recorded implementation handled non-finite intensities and represented slice
 The normalized MRI slices were resized to $160\times160$ pixels using bilinear interpolation. Reference masks were resized to matching dimensions with nearest-neighbor interpolation to preserve binary labels. Image and mask arrays were then represented as single-channel tensors for segmentation.
 
 \paragraph{2D artifact classification.}
-Rather than using the full slice, the classifier received a brain-centered crop generated using either the reference or predicted segmentation mask. Crop intensities were normalized separately, constrained to $[0,1]$, and resized to $224\times224$ pixels using bilinear interpolation. The detailed crop construction, padding, and oracle-versus-predicted variants belong to Section 4.6.
+For classification, the pipeline generated brain-centered image crops from reference or predicted masks, using crop-specific normalization and resizing. The resulting $224\times224$ input representation and the different crop-generation variants are detailed in the developed 2D pipeline section.
 
 \subsection{Subject-Level and Dynamic-Level Data Splits}
 
@@ -184,7 +180,7 @@ The initial research phase investigated whether artifact quality could be assess
 
 The initial segmentation model was a custom three-dimensional U-Net that accepted single-channel volumetric MRI inputs and predicted binary fetal-brain masks. Its encoder comprised convolutional stages with 16, 32, and 64 feature channels, followed by a 128-channel bottleneck. Each stage used two $3\times3\times3$ convolutions with batch normalization and ReLU activations. Three $2\times2\times2$ max-pooling operations reduced spatial resolution. The decoder restored resolution using transposed convolutions and skip-connected encoder features, with decoder feature channels of 64, 32, and 16. A final $1\times1\times1$ convolution and sigmoid activation returned voxel-wise brain probabilities.
 
-The documented segmentation dataset comprised 770 paired MRI volumes and brain masks. An 80:20 dynamic-entry split with seed 42 assigned 616 entries to training and 154 to testing. As established in Section~\ref{sec:data-preparation}, this was not a subject-disjoint partition.
+Training used the preliminary dynamic-entry partition described in Section~\ref{sec:data-preparation}. Because that partition was not subject-disjoint, its evaluation cannot be interpreted as an independent-subject test.
 
 The model used the Adam optimizer with learning rate $10^{-4}$, batch size one, and 25 training epochs. Its reported objective added binary cross-entropy (BCE) to a Dice-based term:
 \begin{equation}
@@ -249,14 +245,12 @@ These observations motivated a more structured volumetric approach combining nnU
 \section{Developed 3D Artifact-Detection Pipeline}
 \label{sec:developed_3d_pipeline}
 
-Following the preliminary experiments involving custom three-dimensional U-Net segmentation, handcrafted image features, and Random Forest classification, a more comprehensive volumetric artifact-detection framework was developed. The revised approach combined nnU-Net v2 for fetal-brain segmentation with a three-dimensional residual convolutional neural network (3D ResNet) for artifact classification. The principal objective was to automate the localization of the fetal brain within complete diffusion MRI dynamics and use learned spatial representations of the extracted brain region to distinguish good-quality and artifact-corrupted acquisitions.
-
-Unlike the preliminary feature-based classifier, which relied on a small number of global intensity descriptors, the developed architecture used convolutional feature learning to represent the spatial characteristics of the image volume. The framework comprised volumetric segmentation, brain-region extraction, intensity normalization, artifact classification, and dynamic-level quality prediction. An additional offline simulation investigated the integration of these operations into an acquisition-oriented quality-control workflow.
+Following the limitations identified in Section~\ref{subsec:preliminary_3d_limitations}, a developed volumetric pipeline combined nnU-Net v2 brain segmentation, anatomical cropping, and a three-dimensional residual convolutional neural network (3D ResNet) for artifact classification. Its processing design and offline acquisition-workflow simulation are described below.
 
 \subsection{Overall 3D Pipeline Architecture}
 \label{subsec:overall_3d_pipeline}
 
-The developed three-dimensional framework consisted of two neural network components connected through an anatomical region-of-interest extraction procedure. The nnU-Net v2 model received a complete three-dimensional diffusion MRI dynamic and produced a binary mask identifying the fetal brain. The 3D ResNet then received the extracted brain-centered image volume and generated a binary quality prediction.
+The framework connected volumetric fetal-brain localization and residual-network artifact classification through extraction of the predicted brain region. Each model's architecture and input preparation are specified in the dedicated subsections below.
 
 The processing sequence can be written as
 \begin{equation}
@@ -271,10 +265,10 @@ The segmentation stage was intended to restrict classification to the anatomical
 \subsection{nnU-Net v2 Fetal Brain Segmentation}
 \label{subsec:3d_nnunet_architecture}
 
-The developed pipeline used nnU-Net v2 for volumetric fetal-brain localization. The change from the initial custom 3D U-Net was motivated by the availability of systematic dataset-specific configuration and preprocessing procedures, instead of configuring all network and spatial-preparation components manually.
+nnU-Net v2 was used for volumetric fetal-brain localization, with configuration determined through dataset-specific framework planning.
 
 \paragraph{Dataset preparation.}
-Each diffusion dynamic was represented as a single-channel three-dimensional MRI input with a corresponding binary fetal-brain reference mask. Image and mask files were associated through unique case identifiers in the nnU-Net dataset specification. The documented segmentation dataset contained 770 image--mask entries, with 600 allocated to training and 170 to testing. The recorded volume-entry split used seed 42. The manifest identified 35 distinct subjects with some identities present across partitions; this was not a subject-disjoint evaluation.
+Each diffusion dynamic was represented as a single-channel three-dimensional MRI input with a paired binary brain mask. Files were associated through unique case identifiers in the nnU-Net dataset specification. The prepared segmentation population, its training/test allocations, and the volume-entry partitioning limitation are documented in Section~\ref{sec:data-preparation}.
 
 \paragraph{Network configuration.}
 The reported framework configuration was \texttt{3d\_fullres}, with target voxel spacing $3\times3\times3$\,mm$^3$ and a patch size of $40\times160\times160$ voxels. The documented six-stage encoder--decoder used feature channels of 32, 64, 128, 256, 320, and 320. Three-dimensional convolutions were combined with instance normalization and leaky rectified linear unit (LeakyReLU) activations. The encoder learned multiscale volumetric features, while the decoder restored spatial resolution, aided by skip connections carrying corresponding encoder information.
@@ -289,7 +283,7 @@ which supplied the anatomical foreground coordinates for downstream cropping. Th
 \subsection{Three-Dimensional Brain Region Extraction}
 \label{subsec:3d_roi_extraction}
 
-The predicted brain mask was used to extract a rectangular three-dimensional region of interest from the original MRI volume. This reduced the amount of non-brain anatomy supplied to the classifier while retaining the MRI intensity values within the selected brain-centered region.
+The predicted mask determined the bounding box used to extract the original brain-centered MRI intensities for classification.
 
 \paragraph{Bounding-box construction.}
 The minimum and maximum coordinates of the mask's foreground voxels defined a bounding box in each spatial dimension. The documented cropping procedure expanded this box by two voxels along each axis, clipped to the original image boundaries. Conceptually, for dimension $k$ with image size $D_k$ and foreground-coordinate set $\Omega_k$, the lower and upper crop positions were defined by
@@ -341,10 +335,10 @@ where $p_{d,1}$ denotes the artifact-class score for dynamic $d$.
 The segmentation and classification stages were trained for different objectives: anatomical fetal-brain localization and binary image-quality prediction, respectively.
 
 \paragraph{nnU-Net segmentation training.}
-The nnU-Net v2 model used the paired 3D images and reference brain masks described previously, with the \texttt{3d\_fullres} dataset-specific configuration and fold-0 model referenced during inference. The recovered materials did not include a complete execution-linked training history or independently verified aggregate held-out segmentation results for this final nnU-Net component. Thus, its precise selected checkpoint epoch and generalization performance were not inferred from the available preparation records.
+The nnU-Net v2 model used the paired volumes and reference masks described in Section~\ref{subsec:3d_nnunet_architecture}. The recovered materials did not include a complete execution-linked training history or independently verified aggregate held-out segmentation results. Consequently, its precise selected checkpoint epoch and generalization performance were not inferred from the preparation records.
 
 \paragraph{3D ResNet classification data.}
-The recovered classifier dataset contained 600 dynamic-level records from 35 subjects, of which 508 were Good-labelled and 92 were Artifact-labelled. The latter constituted approximately 15.3\% of the records. The dataset was associated with the prepared brain-centered volumes from the preceding segmentation and cropping pipeline.
+The recovered classifier dataset comprised 600 eligible dynamic-level records from 35 subjects, with 508 Good and 92 Artifact labels (15.3\% Artifact). Unlike the larger segmentation dataset, these entries were associated with prepared brain-centered classifier inputs. The relationship between the executed training split and prediction export was not completely recoverable.
 
 \paragraph{Classification optimization.}
 The available 3D ResNet training implementation specified 40 epochs, weighted sampling for class imbalance, and a focal-loss objective. Weighted sampling adjusted representation of the two classes during training, while focal loss placed relatively greater emphasis on difficult classification examples. The general loss family can be expressed as
@@ -354,7 +348,7 @@ The available 3D ResNet training implementation specified 40 epochs, weighted sa
 where $p_t$ is the predicted probability of the correct class, $\alpha_t$ is a weighting parameter, and $\gamma$ controls emphasis on difficult examples. This formula does not independently establish the exact hyperparameters used to produce each archived classifier checkpoint.
 
 \paragraph{Partitioning and model selection.}
-The documented training implementation used stratified random splitting at the dynamic-record level for training and validation. It did not enforce grouping by subject, so separate dynamics from one fetus could appear in both populations. The training script specified checkpoint selection by the artifact-class F1-score. However, the recovered records do not conclusively link the complete execution history, selected epoch, classifier checkpoint, and subsequent 600-record prediction export. The resulting uncertainty about training--evaluation independence is reported explicitly in Chapter 5.
+The documented classifier training implementation used stratified dynamic-record partitioning rather than subject-grouped splitting, as distinguished from the 2D partitions in Section~\ref{sec:data-preparation}. The training script specified checkpoint selection by the artifact-class F1-score. The recovered records do not conclusively link the executed training history, selected epoch, checkpoint, and later prediction export; the implications for evaluation independence are addressed with the classification results.
 
 \subsection{Dynamic-Level Artifact Prediction}
 \label{subsec:3d_dynamic_prediction}
@@ -367,7 +361,7 @@ where class 0 denotes Good and class 1 denotes Artifact. The artifact-class prob
 
 Unlike the later 2D approach, this dynamic-level classification did not require aggregation of independently predicted slice scores. Nonetheless, a prediction depended on the availability of the source MRI volume, a usable predicted segmentation mask, and a successfully generated brain crop.
 
-The recovered classification export contained predictions for 600 eligible dynamics. This does not establish that every candidate acquisition from the original dataset passed through all preceding processing stages: the classification population had already undergone data preparation and eligibility filtering, and a complete image-to-mask-to-crop-to-prediction execution log was not recovered. Therefore, the export was not used to claim a verified end-to-end pipeline completion rate.
+Predictions were available for the eligible downstream classification population described in Section~\ref{subsec:3d_training_model_selection}. Since no complete execution log traced all candidate acquisitions through segmentation, cropping, and prediction, the export alone could not establish an end-to-end pipeline completion rate.
 
 \subsection{Offline Acquisition-Workflow Simulation}
 \label{subsec:3d_offline_workflow}

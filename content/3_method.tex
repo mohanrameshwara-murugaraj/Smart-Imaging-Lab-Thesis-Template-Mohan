@@ -381,11 +381,70 @@ Historical project updates identified complete-volume segmentation as a substant
 The simulation processed MRI files after they became available; it did not establish inference during active MRI acquisition or communication with the scanner acquisition controller. Neither automatic interruption of an ongoing scan nor reacquisition of a corrupted dynamic was demonstrated. The experiment therefore provides evidence of an offline file-triggered processing workflow, not prospective scanner-integrated real-time operation. Its dependence on complete-volume availability and the associated computational burden motivated the investigation of slice-wise quality assessment described in Section 4.5.
 
 \section{Motivation for Slice-Wise Artifact Detection}
-% STRUCTURAL PLACEHOLDER: Explain complete-volume decision latency,
-% the 3D-to-2D research transition, and the requirements for sequential QC.
+\label{sec:motivation_2d}
+
+The developed volumetric framework combined nnU-Net v2 fetal-brain localization and 3D ResNet artifact classification to produce one quality prediction per complete diffusion MRI dynamic. Preserving three-dimensional context was useful for representing spatial image features, but the wider research objective also required consideration of when quality feedback could become available. This motivated investigation of slice-wise processing as a distinct computational and decision-making strategy, not an assumption that two-dimensional images necessarily provided superior artifact information.
+
 \subsection{Limitations of Complete-Volume Processing for Early Feedback}
+\label{subsec:3d_feedback_limitations}
+
+\paragraph{Dependence on complete-volume availability.}
+The 3D segmentation model accepted a reconstructed volumetric input. The resulting brain mask determined a three-dimensional region of interest, which was then used to prepare the classifier input. Consequently, the ordinary 3D processing sequence required a complete usable dynamic before segmentation, cropping, and classification could yield a quality decision:
+\begin{equation}
+I_d\longrightarrow M_d\longrightarrow C_d\longrightarrow p_d,
+\end{equation}
+where $I_d$ is the input dynamic, $M_d$ its predicted brain mask, $C_d$ the brain-centered volume, and $p_d$ the classifier's artifact probability. The design permitted retrospective dynamic-level assessment but did not provide a mechanism to evaluate an individual acquired image section using that same volumetric model.
+
+\paragraph{Processing cost and dependency between stages.}
+The developed framework required volumetric segmentation before the 3D ResNet could classify a brain crop. The historical offline scanner-workflow simulation identified nnU-Net processing as an important bottleneck. Development reports described approximately 15--25 seconds per scan in June 2026 and approximately 17--20 seconds per volume in a later presentation. These were historical observations obtained under incompletely matched conditions; their hardware, checkpoints, input preparation, and timing boundaries could not be independently established as identical. Accordingly, the values motivated further investigation without being interpreted as a definitive runtime benchmark for the final 3D pipeline. A separate prepared-crop 3D ResNet benchmark excluded nnU-Net segmentation and initial crop preparation, so it could not substitute for full-pipeline timing.
+
+The dependence on brain localization also introduced a potential failure point. An empty segmentation mask prevented the usual bounding-box crop, while an anatomically inaccurate but nonempty mask could still generate an unsuitable input. These limitations were relevant to both the original 3D pipeline and the subsequent 2D design; changing dimensionality alone did not remove them.
+
+\paragraph{Implications for acquisition-oriented quality control.}
+The file-watching demonstration described in Section~\ref{subsec:3d_offline_workflow} triggered processing when newly saved NIfTI volumes became available. It did not demonstrate direct scanner communication, analysis during active acquisition, or automatic interruption and reacquisition of corrupted dynamics. Thus, the feasibility of retrospectively processing a completed acquisition remained distinct from the ability to supply feedback before a dynamic was finished. The desire to investigate smaller input units, lower computational overhead, and potentially earlier decisions motivated the slice-wise approach.
+
 \subsection{Transition from 3D Dynamics to 2D Slices}
+\label{subsec:transition_3d_to_2d}
+
+The next development stage treated the individual two-dimensional MRI slice as the segmentation and classification input. For dynamic $d$ containing $S_d$ ordered slices, let
+\begin{equation}
+I_d=\{I_{d,1},I_{d,2},\ldots,I_{d,S_d}\}.
+\end{equation}
+The 2D framework generated a classifier artifact score $p_{d,s}$ for each successfully processed eligible slice $I_{d,s}$, preserving the slice's subject and dynamic identity. Unlike the 3D classifier, it did not require a complete volumetric tensor as the input to either of its neural networks. The ordered slice scores could then be examined individually or combined into a dynamic-level quality decision.
+
+\paragraph{Preserving anatomical localization.}
+The transition changed the image representation without abandoning the segmentation-to-classification architecture. A MobileNetV3-Large-based U-Net generated brain masks from individual MRI slices. These masks provided bounding boxes for brain-centered image crops, which were subsequently classified using EfficientNet-B0. The trained components, cropping methods, and inference procedures are detailed in Section~\ref{sec:developed_2d_pipeline}.
+
+\paragraph{Potential computational and decision advantages.}
+Processing smaller 2D inputs enabled investigation of efficient neural network architectures and independent slice inference. Retention of the original slice order also made it possible to formulate a sequential stopping rule: an alert could potentially be generated after a subset of slices if the available scores met a selected condition. This was a design opportunity, not evidence that the implemented system had already achieved prospective early artifact detection. The recorded experiments operated on slices extracted from available NIfTI data.
+
+\paragraph{Trade-offs of losing volumetric context.}
+A 2D classifier did not directly observe spatial relationships across adjacent slices. Artifacts requiring full volumetric context could therefore be more difficult to identify from individual images. Further, source quality labels were assigned to whole dynamics. For eligible slice $s$ belonging to dynamic $d$, the classification target inherited the original label, $\widetilde y_{d,s}=Y_d$. This weak supervision did not establish that the visible artifact was present in each positive-labelled slice. Finally, segmentation and crop failures remained possible at the slice level. These issues required explicit evaluation of slice classification, crop reliability, and dynamic-level decision rules, rather than equating rapid single-slice inference with reliable acquisition-quality assessment.
+
 \subsection{Design Requirements for the 2D Framework}
+\label{subsec:2d_design_requirements}
+
+The transition motivated a set of requirements guiding the developed 2D framework.
+
+\paragraph{Reliable fetal-brain localization.}
+Each image slice required a predicted binary brain mask so that classification could focus on the relevant anatomical region. The segmentation approach needed to account for slices with small, absent, or difficult-to-localize brain foreground. A MobileNetV3-Large U-Net was selected as the developed segmentation architecture.
+
+\paragraph{Computationally efficient processing.}
+The segmentation and classification stages were designed for individual two-dimensional inputs, allowing their inference costs to be benchmarked separately. The runtime of preprocessing, segmentation, crop preparation, classification, and decision logic was measured rather than inferred solely from architecture size. Stage-specific measurements did not, by themselves, constitute total scanner-to-decision latency.
+
+\paragraph{Anatomically focused classification and crop evaluation.}
+The EfficientNet-B0 classifier received intensity crops centered on the predicted fetal brain. Reference-mask-assisted oracle crops were also prepared to study alternative localization conditions. Because separately trained oracle and predicted-crop classifiers were used in documented experiments, any differences in their results could not be attributed exclusively to segmentation quality.
+
+\paragraph{Identity preservation and acquisition-level decisions.}
+Subject, dynamic, and slice identifiers were retained throughout processing. They supported subject-separated model evaluation, inheritance of dynamic-level quality targets, grouping of slice probabilities, and comparison with acquisition-level annotations. The overall quality-control framework required an explicit rule for translating multiple slice results into one dynamic-level decision.
+
+\paragraph{Explicit processing-failure handling.}
+An unusable or empty predicted brain mask was treated as an unavailable classifier input, not automatically as a low artifact probability. Segmentation failures were recorded separately and could be incorporated into dynamic-level quality-control rules. A failure signal was not assumed to be independently confirmed evidence of visible artifact corruption.
+
+\paragraph{Sequential assessment with clearly bounded claims.}
+The architecture needed to permit evaluation of slices in order and optional stopping after a classifier or localization-failure trigger. A demonstrated stopping rule must be distinguished from measured first-detection latency and prospective scanner integration. The implemented aggregation and sequential-decision procedures are specified in Section~\ref{sec:dynamic_sequential_assessment}.
+
+Taken together, these requirements motivated a lightweight slice-wise segmentation-to-classification workflow and a separate dynamic-level decision layer. The transition was therefore driven by investigation of feedback timing and processing strategy while retaining the known limitations of weak labels, segmentation dependence, and incomplete volumetric context.
 
 \section{Developed 2D Artifact-Detection Pipeline}
 \label{sec:developed_2d_pipeline}
@@ -546,62 +605,115 @@ For slice $s$ of dynamic $d$, denote the artifact-class score by $p_{d,s}$. A co
 These scores represent evidence for inherited dynamic-quality labels rather than independently calibrated probabilities of visible slice artifacts. Available slice probabilities, crop failures, and source identifiers were retained for the subsequent dynamic-level decision procedures.
 
 \section{Dynamic-Level and Sequential Quality Assessment}
-\subsection{Dynamic-Level Quality Assessment}
+\label{sec:dynamic_sequential_assessment}
 
-\subsubsection{Slice-Probability Aggregation}
+The 2D framework produced artifact-class probabilities for individual brain-centered MRI slices, whereas its source quality labels described complete diffusion dynamics. A further decision layer was therefore needed to combine slice outputs into acquisition-level assessments. Two distinct procedures were investigated: retrospective aggregation of slice-level scores (optionally incorporating crop failures) and a sequential demonstration in which the application could stop at an individual-slice trigger. The latter was an offline processing workflow and was not treated as a validated scanner-time early-detection result.
 
-Because quality annotations and prospective quality-control decisions refer to complete diffusion MRI dynamics, slice-level artifact probabilities were examined as inputs to dynamic-level aggregation. For a dynamic with $n$ successfully classified slices, the probabilities were denoted by $p_1,\ldots,p_n$. The evaluation considered the arithmetic mean, median, maximum, and aggregation variants labeled \texttt{top2}, \texttt{top3}, and \texttt{top5}.
+\subsection{Aggregation of Slice-Level Predictions}
+\label{subsec:2d_dynamic_aggregation}
 
-For example, the mean and maximum scores can be written as
+Let $\mathcal{S}^{\mathrm{valid}}_d$ denote the slice indices of dynamic $d$ for which segmentation, crop extraction, and classification succeeded. The available artifact-class scores were
 \begin{equation}
-A_{\mathrm{mean}}=\frac{1}{n}\sum_{i=1}^{n}p_i,\qquad
-A_{\mathrm{max}}=\max_{1\leq i\leq n}p_i.
+\mathcal{P}_d=\{p_{d,s}:s\in\mathcal{S}^{\mathrm{valid}}_d\},
+\qquad n_d=|\mathcal{S}^{\mathrm{valid}}_d|.
 \end{equation}
-The median represents the central value of the slice-probability distribution. The archived evaluation outputs identify top-$k$ variants, but the available record does not establish whether these labels denote the mean of the $k$ highest scores or another ordered-score rule. Consequently, a particular top-$k$ equation was not assumed without the corresponding aggregation implementation.
+For $n_d>0$, an aggregation operator $g$ produced a dynamic-level score $A_d=g(\mathcal{P}_d)$.
 
-Aggregation was performed at the dynamic level so that multiple related slices were not treated as independent quality-control decisions. Slices without a valid brain crop contributed no classifier probability and required separate failure handling rather than being silently assigned an artifact score of zero.
+The recovered evaluation considered arithmetic mean, median, and maximum aggregation:
+\begin{align}
+A_d^{\mathrm{mean}}&=\frac{1}{n_d}\sum_{s\in\mathcal{S}^{\mathrm{valid}}_d}p_{d,s},\\
+A_d^{\mathrm{median}}&=\operatorname{median}(\mathcal{P}_d),\\
+A_d^{\mathrm{max}}&=\max_{s\in\mathcal{S}^{\mathrm{valid}}_d}p_{d,s}.
+\end{align}
+The mean summarized the overall slice evidence but could dilute isolated high scores. The median reduced the influence of extreme predictions, while the maximum preserved the strongest observed artifact score but could be sensitive to a single false positive.
 
-\subsubsection{Classification Thresholds}
+Additional recorded configurations were identified as \texttt{top2}, \texttt{top3}, and \texttt{top5}. These labels referred to variants selecting high-scoring slices, but the recovered outputs did not conclusively establish the calculation performed for every archived configuration. An explicit top-$k$ equation was therefore not attributed to all such results without the corresponding executed script.
 
-Continuous artifact scores were converted into quality-control decisions using probability thresholds. In the sequential demonstration, the user-adjustable slice-level threshold was initialized to 0.92, with a permitted range of 0.50 to 0.99. A slice triggered an artifact alert when its class-1 probability met or exceeded the selected threshold.
+Slices lacking a usable crop contributed no classifier probability; their missing scores were not replaced with zero. When no valid scores were available, aggregation was undefined and required a separate failure policy. Each dynamic, rather than each constituent slice, was treated as one evaluation observation for acquisition-level quality assessment.
 
-Offline dynamic-level evaluations explored several aggregation methods and candidate thresholds, including combinations with segmentation-failure settings. The comparison of operating points was intended to characterize the trade-off between artifact sensitivity and false alarms on good acquisitions. The default demonstration threshold and thresholds appearing in offline aggregation searches were treated as distinct experimental settings; a threshold selected in one procedure was not presumed to be a frozen operating point for the other.
+\subsection{Artifact Classification Thresholds}
+\label{subsec:2d_dynamic_thresholds}
 
-Any chosen operating rule requires specification of the aggregation operator, the threshold, the failure policy, and the dataset used for selection. The preserved October aggregation results document an exploratory threshold sweep, but do not independently establish a final test-frozen threshold or the exact implementation semantics of each failure setting.
+A decision threshold converted the aggregated Artifact-class score to a binary quality prediction:
+\begin{equation}
+D_d^{\mathrm{cls}}(\tau)=
+\begin{cases}
+1,& A_d\geq\tau,\\
+0,& A_d<\tau.
+\end{cases}
+\end{equation}
+Class 1 indicated Artifact and class 0 indicated Good, under the selected aggregation operator and threshold. Lower thresholds could increase sensitivity at the cost of false alerts; higher thresholds could reduce false positives while missing artifact-positive acquisitions. Thresholds were therefore analyzed jointly with the aggregation configuration and evaluation cohort.
 
-\subsubsection{Segmentation Failure Handling}
+Offline retrospective analyses explored combinations of aggregation operators and candidate thresholds, including failure-aware settings. Their purpose was to characterize sensitivity, specificity, precision, and other dynamic-level metrics across operating points. An exploratory threshold-search result did not automatically constitute an operating rule frozen before independent test evaluation, particularly when complete selection provenance was not available.
 
-A segmentation failure was identified when the predicted brain mask contained no foreground pixels and therefore could not support brain-centered crop generation. Such cases were distinguished from successful crops with inaccurate spatial localization: a nonempty mask could produce a crop despite poor overlap with the reference segmentation.
+The sequential demonstration used a separate user-adjustable \emph{slice-level} threshold initialized at 0.92, with an allowed range of 0.50--0.99. That condition compared one current slice score with its threshold; it was not equivalent to thresholding a full-dynamic mean, median, maximum, or top-$k$ aggregation. The experimental settings were therefore kept distinct.
 
-In the sequential quality-control demonstration, an empty mask or unusable crop could trigger a quality-control failure and terminate processing when the corresponding stop-on-failure option was enabled. This was a failure-based decision, not a classifier-confirmed artifact. The offline evaluation also recorded segmentation failures as a separate input to failure-aware dynamic assessment; its stored threshold labels are not sufficient on their own to establish the exact failure-count decision expression.
+\subsection{Segmentation-Failure-Aware Decision Rules}
+\label{subsec:2d_failure_aware_rules}
 
-Failure-aware evaluation retained these cases in the relevant denominators. Excluding them would measure classification only among successful segmentations and could overstate the completeness of the end-to-end quality-control pipeline.
+The classifier required a valid brain crop. An empty predicted mask or unsuccessful crop prevented ordinary classification and was recorded as a localization or crop-generation failure. Conversely, a nonempty predicted mask could yield a crop even when its anatomical overlap was poor; this was not the same event as a missing crop.
 
-\subsection{Sequential Quality-Control Implementation}
+Define the observed failure indicator for selected slice $s$ of dynamic $d$ as
+\begin{equation}
+F_{d,s}=
+\begin{cases}
+1,&\text{no usable brain crop is generated},\\
+0,&\text{a usable crop is generated}.
+\end{cases}
+\end{equation}
+For selected slice set $\mathcal{S}_d$, the failure count was
+\begin{equation}
+N_d^{\mathrm{fail}}=\sum_{s\in\mathcal{S}_d}F_{d,s}.
+\end{equation}
+A recovered failure-aware dynamic assessment combined an aggregated classifier score with a minimum failure-count condition. For a valid aggregated score, its decision may be expressed as
+\begin{equation}
+D_d^{\mathrm{QC}}=
+\mathbb{1}\!\left[A_d\geq\tau\ \lor\ N_d^{\mathrm{fail}}\geq\kappa\right],
+\end{equation}
+where $\kappa$ denotes the configured failure threshold. The recovered evaluation included a setting with $\kappa=1$. This expression describes the documented failure-aware policy family; the exact semantics of all archived failure-threshold labels could not be established from the output tables alone. Cases without any valid classification scores must be handled directly by a specified failure policy, rather than by evaluating an undefined $A_d$.
 
-\subsubsection{Sequential Processing Workflow}
+A failure-triggered flag was a quality-control decision, not an independently confirmed artifact. An unusable mask could reflect image degradation, anatomy, slice selection, or segmentation-model limitations. Failure-aware evaluation therefore retained failures in the appropriate dynamic-level denominators and distinguished classifier-only performance among usable crops from behavior of the entire processing workflow.
 
-A sequential processing demonstration was implemented to assess the operation of the two-dimensional segmentation and classification pipeline on individual diffusion MRI dynamics. The application accepted a reconstructed three-dimensional or four-dimensional NIfTI image, selected a dynamic where necessary, and iterated through a specified range of two-dimensional slices. The default selection used the third image axis and slice indices 8--25, inclusive, without additional in-plane transformation.
+\subsection{Sequential Processing and Early-Stopping Logic}
+\label{subsec:2d_sequential_stopping}
 
-For each selected slice, the application performed segmentation normalization and resizing, MobileNetV3-Large U-Net inference, restoration of the binary mask to the original slice dimensions, brain-centered cropping, and EfficientNet-B0 artifact-probability estimation. The result of each processed slice, together with component timings and any localization failure, was recorded as the sequence progressed. The model checkpoints were loaded once using a cached model-loading procedure rather than reinitialized for each slice.
+A sequential demonstration accepted reconstructed 3D or 4D NIfTI input, selected one dynamic where required, and processed an ordered range of image slices. The documented default used the third image axis and indices 8--25, inclusive, without an additional in-plane transformation. For each slice, the application performed image normalization, MobileNetV3-Large U-Net inference, restoration of the predicted binary mask to source dimensions, brain-centered crop extraction, and EfficientNet-B0 artifact-probability estimation when possible. Slice outputs, failure states, and component timings were recorded as processing progressed. Model checkpoints were cached rather than reloaded for each slice.
 
-The implemented workflow demonstrated decision-making from successive slice-level observations of a completed input dynamic. It did not establish that inference was executed prospectively during scanner acquisition or that the application controlled a scanner reacquisition sequence.
+\paragraph{Artifact-trigger stopping.}
+For current slice $s$, a usable crop produced probability $p_{d,s}$. The application compared it with the slice-level threshold $\tau_s$, generating an artifact trigger when
+\begin{equation}
+T_{d,s}^{\mathrm{artifact}}=\mathbb{1}[p_{d,s}\geq\tau_s]=1.
+\end{equation}
+If this condition was reached, the application flagged the dynamic and stopped examining subsequent selected slices.
 
-\subsubsection{Early Stopping and Quality Decisions}
+\paragraph{Optional failure-trigger stopping.}
+When the stop-on-failure option was enabled, an empty predicted mask or unusable crop could also terminate the sequence with a distinct failure designation. With $\eta\in\{0,1\}$ indicating whether that option was active, the combined trigger was
+\begin{equation}
+T_{d,s}=T_{d,s}^{\mathrm{artifact}}\lor(\eta F_{d,s}),
+\end{equation}
+with the classifier trigger treated as false when no classifier prediction existed. This logical rule should not be confused with the retrospective failure-count threshold $\kappa$.
 
-Sequential early stopping was based on a slice-level artifact trigger and an optional localization-failure trigger. After successful crop generation, the application compared the predicted artifact probability against the selected threshold. If the threshold was reached, the dynamic was flagged for an artifact-related quality-control action and further slice processing stopped. When stop-on-failure was enabled, an empty predicted mask or failed crop similarly stopped processing with a separate failure designation.
+For an ordered set of selected slices $s_1,\ldots,s_K$, the first-trigger position was defined, if a trigger occurred, as
+\begin{equation}
+J_d=\min\{j:T_{d,s_j}=1\}.
+\end{equation}
+The decision position counted examined slices rather than representing the original absolute slice index. In the absence of a trigger, processing reached the final selected slice; this outcome meant only that no enabled stopping condition occurred within that range, not that the entire acquisition was demonstrably artifact-free.
 
-If neither condition occurred, processing continued to the next selected slice. A dynamic reaching the end of the chosen range without a trigger was recorded as having no detected trigger within that range; this did not demonstrate the absence of artifacts outside the examined slices. The sequential application used an individual-slice threshold and was not assumed to implement the offline mean, median, or top-$k$ full-dynamic aggregation rules.
+The demonstration implemented logical early stopping over slices from a completed input image. It did not establish prospective streaming from the scanner or automatic reacquisition. The recovered evidence did not provide a verified per-dynamic first-trigger evaluation or measured time saved through early stopping. Arithmetic estimates based on unprocessed slice counts were therefore not treated as actual observed latency reductions.
 
-For an ordered range beginning at slice 8, decision position was defined by the number of slices examined up to the first trigger, not by the absolute slice index. Early stopping was intended to avoid processing remaining selected slices once a trigger occurred. Any reported savings must distinguish actual measured processing time from extrapolated savings based on the number of unprocessed slices.
+\subsection{Dynamic-Level Quality Decisions}
+\label{subsec:2d_final_dynamic_decisions}
 
-\subsubsection{Computational Latency Measurement}
+The developed decision layer distinguished retrospective dynamic classification from sequential first-trigger quality-control outcomes.
 
-Computational latency was investigated at the level of individual processing stages, including segmentation preprocessing, segmentation inference, ROI crop preparation, classifier inference, and dynamic-level aggregation. The preserved two-dimensional benchmark evaluated 1,529 candidate test slices; classifier inference was recorded for 1,499 slices with successful predicted crops. Stage-specific durations and successful-slice end-to-end durations were summarized using means, medians, upper percentiles, and maximum values.
+\paragraph{Retrospective dynamic decisions.}
+Available slice probabilities were grouped by original subject and dynamic identifiers. An aggregation operator generated a score and a selected threshold produced the classifier-based binary decision. Failure-aware configurations additionally considered the number of unusable crops. Each evaluated dynamic contributed one reference quality label and one resulting decision for a specified rule, allowing assessment using accuracy, Artifact sensitivity, specificity, precision, F1-score, and corresponding confusion-matrix counts.
 
-GPU execution was used for the measured neural-network stages. The archived two-dimensional benchmark identifies an NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb device. The interpretation of reported timing values was restricted to the operations covered by the benchmark: initialization, disk input/output, acquisition, visualization, data transfer, and application delays were not all independently established as included. In particular, the sequential application's optional visual delay was not treated as neural-network processing latency.
+\paragraph{Sequential demonstration outcomes.}
+The ordered application distinguished (i) an artifact-related trigger based on a classifier score, (ii) a localization-failure trigger when enabled, and (iii) completion of the selected range without a trigger. This separation was necessary because a failed segmentation was not a classifier-confirmed artifact. The sequential decision did not require all selected slice probabilities, unlike retrospective full-dynamic aggregation.
 
-Historical three-dimensional timing records were retained as a separate measurement family because their stage boundaries and evaluation environments differed. In particular, the documented three-dimensional classifier benchmark excluded brain-crop construction and disk I/O. Consequently, classifier-only three-dimensional timings were not directly equated with the complete two-dimensional segmentation-to-classification path.
+\paragraph{Interpretation and evaluation boundary.}
+Retrospective dynamic results establish agreement of recorded decisions with acquisition-level annotations for their specific test populations and operating conditions. Demonstrating useful early detection additionally requires validated first-decision positions, the decision information available before each trigger, reliable ground truth, and measured processing time to that decision. Such a complete sequential evaluation was not established in the recovered results. The broader experimental configurations and metric definitions are described in Section~\ref{sec:experimental-evaluation}, with numerical findings presented in Chapter 5.
 
 \section{Experimental Design and Evaluation Protocol}
 \label{sec:experimental-evaluation}

@@ -1,0 +1,880 @@
+\chapter{Results}
+
+\section{Experimental Dataset Characteristics}
+\label{sec:results_evaluation_framework}
+
+The experimental evaluation was conducted at several levels of the fetal diffusion magnetic resonance imaging (dMRI) data hierarchy, reflecting the different processing strategies investigated in this study. The three-dimensional (3D) pipeline operated on complete diffusion dynamics, whereas the two-dimensional (2D) pipeline performed segmentation and artifact classification on individual slices before combining the classification outputs into a dynamic-level decision. The evaluation therefore involved distinct datasets and analysis populations for brain segmentation, artifact classification, crop generation, and dynamic-level quality assessment.
+
+This section describes the organization of the annotated data, the composition of the experimental datasets, the evaluation populations used in the subsequent analyses, and the performance metrics used to quantify model behavior. Particular attention is given to distinguishing the original dynamic-level quality annotations from derived slice-level classification targets and to identifying differences between the experimental cohorts.
+
+\subsection{Dataset Organization and Ground-Truth Annotations}
+\label{subsec:results_annotations}
+
+The fetal dMRI data were organized into subjects, acquisition sequences, diffusion dynamics, and individual image slices. Each dynamic represented a volumetric MRI acquisition consisting of multiple spatial slices. Quality annotations were assigned at the dynamic level, rather than independently to each constituent slice.
+
+The original annotation table contained 38 case--sequence records, with 22 dynamic annotation positions per record. This resulted in 836 annotation entries, distributed among three categories: good quality (0), artifact-positive (1), and uncertain ($-1$). Of these entries, 655 (78.3\%) were labelled good, 115 (13.8\%) were labelled artifact-positive, and 66 (7.9\%) were assigned to the uncertain category. The distribution is shown in Figure~\ref{fig:original_dynamic_labels} once the corresponding source figure is added to the repository.
+
+% FIGURE TO ADD:
+% Source file supplied for Results chapter: F01_dynamic_label_counts.pdf
+% Copy into the thesis figure directory and uncomment/adapt the figure environment:
+%
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=0.78\textwidth]{figures/F01_dynamic_label_counts.pdf}
+%   \caption{Distribution of the original diffusion-dynamic quality annotations:
+%   655 good, 115 artifact-positive, and 66 uncertain entries. These are
+%   annotation-table entries rather than the final model evaluation populations.}
+%   \label{fig:original_dynamic_labels}
+% \end{figure}
+%
+% Until the image is added, this cross-reference will remain unresolved.
+
+The predominance of good-quality annotations indicates an imbalanced quality-label distribution in the source data. The uncertain category was excluded when constructing binary artifact-classification targets. However, the annotation-table counts do not directly represent the number of available image files, because subsequent experiments additionally depended on MRI availability, associated segmentation masks, preprocessing requirements, and task-specific inclusion criteria.
+
+The original quality labels were retained as dynamic-level targets in the 3D artifact-classification experiments. For the 2D experiments, slices were extracted from the corresponding volumes and associated with brain-mask information. Since the original quality annotations described complete dynamics, binary classification targets for the individual slices were inherited from their parent dynamic labels.
+
+These derived targets are referred to as \emph{weak slice-level labels}. In particular, a slice extracted from an artifact-positive dynamic received a positive classification target even when the artifact was not necessarily visible within that individual slice. Consequently, the slice-level classification results quantify agreement with inherited dynamic-quality labels rather than independently verified slice-level artifact annotations.
+
+A separate distinction applies to brain-presence annotations used during slice selection. Slices with insufficient or absent fetal-brain content could be excluded from the classification dataset. This brain-presence criterion was not treated as an additional artifact-quality category.
+
+\subsection{Dataset Composition and Data Partitioning}
+\label{subsec:results_dataset_splits}
+
+Different experimental datasets were constructed for volumetric segmentation, volumetric artifact classification, slice-wise segmentation, and slice-wise artifact classification. Their sizes and partitioning strategies are therefore reported separately.
+
+\paragraph{Three-dimensional experimental datasets.}
+The volumetric brain-segmentation dataset comprised 770 MRI entries associated with the 3D segmentation experiments. The final nnU-Net dataset configuration listed 600 training images and 170 test images. Examination of the dataset manifest identified 35 distinct subject identifiers, with subjects represented in both partitions. The partitioning was therefore separated at the volume-entry level rather than at the subject level.
+
+The 770-entry dataset was also used in an earlier exploratory custom 3D U-Net experiment, which employed a random allocation of 616 MRI--mask pairs to training and 154 pairs to testing. These represent distinct segmentation experiments and must not be interpreted as identical evaluation protocols.
+
+For the subsequent 3D artifact-classification pipeline, the recovered classifier dataset contained 600 dynamic-level records from 35 subjects. Of these, 508 were labelled good and 92 were labelled artifact-positive. The dataset was associated with brain-region processing and the custom 3D ResNet classifier.
+
+Although an export containing 600 ResNet predictions was recovered, the relationship between those predictions and the data used for model training and selection has not been fully established. The 600 prediction records are therefore not automatically interpreted as an independent test population. The corresponding performance results are examined with this qualification in Section~\ref{sec:results_3d_classification}.
+
+\paragraph{Two-dimensional experimental datasets.}
+The 2D pipeline used subject-based data partitioning. For the artifact-classification experiments, the recovered dataset contained 9,113 selected slices from 24 subjects. These were distributed among training, validation, and test subsets containing 16, four, and four subjects, respectively.
+
+The classifier-relevant slices were selected from the brain-present portion of the dynamic, using slice indices 8--25. The resulting partitions contained 6,078 training slices, 1,506 validation slices, and 1,529 test slices. The recovered classifier metadata confirmed that the subject identifiers were disjoint across these three partitions.
+
+The corresponding class distributions are summarized in Table~\ref{tab:2d_classification_splits}.
+
+\begin{table}[htbp]
+\centering
+\caption{Composition of the 2D artifact-classification dataset according to subject-based partitions and inherited dynamic-level quality labels.}
+\label{tab:2d_classification_splits}
+\begin{tabular}{lrrrr}
+\hline
+Dataset partition & Subjects & Good-labelled & Artifact-labelled & Total slices \\
+\hline
+Training & 16 & 4,996 & 1,082 & 6,078 \\
+Validation & 4 & 1,405 & 101 & 1,506 \\
+Test & 4 & 1,258 & 271 & 1,529 \\
+\hline
+Total & 24 & 7,659 & 1,454 & 9,113 \\
+\hline
+\end{tabular}
+\end{table}
+
+The artifact-positive proportion differed between the partitions, accounting for 17.8\% of training slices, 6.7\% of validation slices, and 17.7\% of test slices. This difference is relevant when interpreting class-sensitive performance measures, particularly precision and precision--recall analysis.
+
+The 2D segmentation evaluation used a broader slice population than the restricted artifact-classification dataset. The recorded segmentation test set contained 3,168 slices from four subjects, comprising 1,902 brain-present slices and 1,266 slices without reference brain content. Accordingly, segmentation metrics calculated over the broader test set must not be treated as measurements over the 1,529 classifier-selected test slices.
+
+\subsection{Experimental Evaluation Cohorts}
+\label{subsec:results_evaluation_cohorts}
+
+Several evaluation populations were used to investigate different components of the proposed pipelines. These populations differed in their analysis units, sample sizes, and experimental objectives.
+
+For 2D brain segmentation, the full test population of 3,168 slices was used to evaluate fetal-brain localization, including images with and without brain content. Further subgroup analyses examined segmentation behavior specifically within brain-present slices and across the original dynamic-quality categories.
+
+For 2D artifact classification, the principal restricted test set contained 1,529 brain-present slices. Reference-mask-based crops, referred to as \emph{oracle crops}, were available for all 1,529 slices. Automatic crops generated from predicted segmentation masks were available for 1,499 slices, while 30 slices did not yield a usable predicted crop.
+
+Consequently, two complementary classification evaluation populations were distinguished: the complete 1,529-slice oracle-crop test set and the common 1,499-slice subset for which both oracle and predicted crops were available. The latter provided the matched population for comparing the two classifier input strategies. The 30 unavailable predicted crops were examined separately as segmentation-to-classification pipeline failures.
+
+A distinct dynamic-level evaluation comprised 88 dynamics from four held-out subjects, including 70 good-labelled and 18 artifact-positive dynamics. This population was used to evaluate aggregated 2D classification decisions and recorded failure-aware decision policies.
+
+An additional matched comparison dataset contained 71 dynamics from four subjects, consisting of 59 good-labelled and 12 artifact-positive dynamics. The recovered records included paired 3D and 2D prediction labels for each dynamic, and the aggregate confusion matrices were consistent with the previously reported comparison results. The provenance of the associated model checkpoints and the independence of the 3D evaluation data from model development remain relevant qualifications for interpreting this comparison.
+
+The principal evaluation populations are summarized in Table~\ref{tab:results_cohorts}.
+
+\begin{table}[htbp]
+\centering
+\caption{Overview of the principal experimental datasets and evaluation populations.}
+\label{tab:results_cohorts}
+\begin{tabular}{lrl}
+\hline
+Evaluation component & Population & Evaluation unit \\
+\hline
+Original quality annotations & 836 & Annotation-table entry \\
+3D segmentation dataset & 770 & Volume entry \\
+Recovered 3D classifier dataset & 600 & Dynamic \\
+2D segmentation test & 3,168 & Slice \\
+2D classification test & 1,529 & Slice \\
+Matched oracle/predicted classification & 1,499 & Slice \\
+2D dynamic-level evaluation & 88 & Dynamic \\
+Matched 3D-versus-2D evaluation & 71 & Dynamic \\
+\hline
+\end{tabular}
+\end{table}
+
+These populations were not combined into a single pooled evaluation dataset. In particular, the 71-dynamic matched comparison and the 88-dynamic 2D evaluation represent separate experimental records, while the 1,499-slice matched crop comparison is a subset of the 1,529-slice classification test population.
+
+Furthermore, individual slices within a dynamic and multiple dynamics acquired from the same fetus are not statistically independent biological observations. Subject-level partitioning was therefore important for the 2D experimental design, while the documented subject overlap in the 3D segmentation dataset and the unresolved 3D classifier training--evaluation relationship require explicit consideration when interpreting generalization.
+
+\subsection{Evaluation Metrics}
+\label{subsec:results_evaluation_metrics}
+
+The experimental results were assessed using metrics appropriate to the segmentation and artifact-classification tasks.
+
+Brain-segmentation performance was evaluated primarily using the Dice similarity coefficient and intersection over union (IoU), which quantify the spatial overlap between predicted brain masks and reference masks. Segmentation sensitivity and specificity were additionally used to describe the identification of brain and background pixels. Dice distributions and cases with missing or incomplete predicted masks were examined to identify variation that could be obscured by overall average performance.
+
+For binary artifact classification, the artifact-positive category was defined as the positive class. True positives (TP) corresponded to correctly identified artifact-positive slices or dynamics, while false negatives (FN) represented artifact-positive observations classified as good. False positives (FP) were good-quality observations incorrectly classified as artifact-positive, and true negatives (TN) were correctly classified good-quality observations.
+
+Classification performance was summarized using accuracy, precision, recall (artifact sensitivity), specificity, and the F1-score. Where continuous prediction probabilities were available, receiver operating characteristic area under the curve (ROC-AUC) and precision--recall analysis were also used to assess discrimination across decision thresholds.
+
+Because good-quality observations were more frequent than artifact-positive observations in several evaluation populations, overall accuracy alone was not considered sufficient to characterize classification performance. Particular attention was given to artifact sensitivity, the number of missed artifact-positive observations, and the trade-off between artifact detection and false-positive decisions.
+
+For dynamic-level evaluation, classification metrics were calculated after combining slice-level outputs into a single decision for each diffusion dynamic. These results were reported separately from the slice-level metrics, since the two analyses differ in both their unit of prediction and their evaluation denominator.
+
+Finally, crop-generation reliability was described using the number and proportion of successful and unsuccessful predicted crops. Computational performance was assessed using recorded processing times, with separate reporting of slice-level inference, volumetric processing, and individual pipeline stages whenever corresponding measurements were available. These complementary measurements provided the basis for evaluating classification behavior, robustness, and computational feasibility in the subsequent sections.
+
+\section{Preliminary 3D Experimental Results}
+\label{sec:results_3d_segmentation}
+
+Volumetric brain segmentation was investigated as the first processing stage of the 3D artifact-detection pipeline. The experiments initially examined a custom three-dimensional U-Net architecture and subsequently adopted nnU-Net for fetal-brain localization prior to volumetric cropping and artifact classification. The available results are presented separately because the two approaches differed in their training procedures and evaluation evidence.
+
+\subsection{Historical Segmentation Experiments}
+\label{subsec:historical_3d_segmentation}
+
+The initial segmentation experiment employed a custom 3D U-Net trained using 770 MRI--brain-mask pairs. A random volume-level partition assigned 616 pairs to training and 154 pairs to testing. The model was trained for 25 epochs, and the recorded training history showed a progressive improvement in spatial overlap between predicted and reference masks.
+
+The training Dice coefficient increased from 0.7825 in the first epoch to 0.9656 at epoch 25. Over the same period, training loss decreased from 0.6177 to 0.0361. The largest improvement occurred during the initial epochs, followed by smaller fluctuations as training progressed. The corresponding trajectories are available as historical figures \texttt{F04\_historical\_3D\_training\_dice.pdf} and \texttt{F05\_historical\_3D\_training\_loss.pdf}, pending placement in the thesis figure directory.
+
+These measurements demonstrate improved agreement on the training data over the recorded optimization period. However, no separate validation history or independently selected best-validation checkpoint was documented for this experiment. The final training Dice must therefore not be interpreted as held-out segmentation performance.
+
+A limited inference inspection of five selected volumes produced three predicted masks and associated crops; the remaining two volumes yielded no detectable brain region. The failed cases were dynamic 19 in \texttt{mibirth013801\_nz} and dynamic 19 in \texttt{fetus6\_nz}. These observations concern the exploratory custom 3D U-Net, not the subsequent nnU-Net component.
+
+Four additional mask comparisons were recorded in the exploratory notebook, with Dice coefficients of 0.7708, 0.7183, 0.3379, and 0.7527. However, the archived evaluation procedure did not reliably establish correspondence between the subject identifiers of all predictions and reference masks. These overlap values were therefore retained only as historical observations and were excluded from the quantitative assessment of the final segmentation pipeline.
+
+Taken together, the exploratory experiments demonstrated that volumetric brain-mask prediction was feasible within the investigated training setting, while also revealing localization failures and limitations in the original evaluation procedure.
+
+\section{Developed 3D Pipeline Results}
+\subsection{nnU-Net Segmentation Evaluation}
+\label{subsec:nnunet_segmentation_evaluation}
+
+The subsequent 3D pipeline incorporated nnU-Net as the fetal-brain segmentation stage. The recovered dataset configuration contained 770 volumetric MRI entries, comprising 600 training entries and 170 test entries. The manifest identified 35 distinct subject identifiers, with subjects occurring in both partitions. Thus, the recorded partitioning did not provide an independent subject-level test population.
+
+The nnU-Net segmentation stage was used to generate brain masks for subsequent volumetric region-of-interest extraction and artifact classification. The recovered 3D classifier dataset contained 600 dynamic-level records associated with this downstream processing workflow, demonstrating the availability of a substantial set of processed classification inputs. However, the number of downstream classifier records does not independently establish segmentation accuracy or successful brain localization in every case.
+
+The recovered evidence did not include a complete, verifiable held-out nnU-Net segmentation evaluation containing reference masks, corresponding predictions, and aggregate overlap metrics. Consequently, a final test Dice coefficient, test IoU, or distribution of per-volume segmentation accuracy cannot be reported for this model from the presently available evidence.
+
+This limitation is particularly relevant because the segmentation dataset included overlapping subject identities across its training and test partitions. Even if volume-level test metrics were recovered, their interpretation would need to account for this partitioning structure rather than treating the observations as independent evaluations on previously unseen fetuses.
+
+The quantitative assessment of the final nnU-Net stage is therefore restricted to the documented dataset composition and its role in generating downstream brain-region inputs. Classification results obtained from those inputs are presented separately in Section~\ref{sec:results_3d_classification}.
+
+\subsection{Qualitative Segmentation and Brain Localization}
+\label{subsec:3d_segmentation_qualitative}
+
+The qualitative assessment of volumetric segmentation focused on whether predicted masks identified a usable fetal-brain region for subsequent cropping. This distinction is important because successful generation of a non-empty mask does not necessarily imply accurate anatomical localization.
+
+The exploratory 3D U-Net experiment provided direct evidence of missing-mask outcomes in selected inference cases. Such failures prevented the extraction of a brain-region crop and consequently interrupted the intended segmentation-to-classification workflow. The four archived numerical mask comparisons further illustrated variable segmentation agreement, but their unresolved subject correspondence prevents them from serving as reliable representative examples of final model performance.
+
+For the later nnU-Net pipeline, the recovered materials established that predicted brain masks were incorporated into volumetric preprocessing. Nevertheless, a matched visual collection containing the original MRI, reference brain mask, and final nnU-Net prediction for the same subject and dynamic was not available in the verified evidence package. Therefore, no claim regarding the frequency or anatomical distribution of final nnU-Net localization errors can be substantiated.
+
+The available 3D segmentation results consequently provide evidence of model-development progress and the implementation of volumetric brain localization, but do not establish independently verified segmentation generalization for the final nnU-Net component. The implications for downstream artifact classification are examined using the available 3D classifier predictions and pipeline records in the following sections.
+
+\subsection{3D ResNet Artifact Classification}
+\label{sec:results_3d_classification}
+
+Following volumetric brain localization, the 3D pipeline employed a residual convolutional neural network to classify diffusion dynamics as good quality or artifact-positive. The recovered experimental records included a 600-dynamic classifier dataset and an associated prediction export containing continuous artifact probabilities and binary decisions. This section presents the documented classifier configuration, the results reconstructed from those records, and the observed classification errors. Because the independence of the prediction population from model training has not been established, the reconstructed performance is distinguished from a verified held-out test evaluation.
+
+\subsubsection{Model Training and Selection}
+\label{subsec:results_3d_model_selection}
+
+The final volumetric classification approach used a custom three-dimensional ResNet architecture operating on cropped MRI volumes. The corresponding training implementation comprised an initial convolutional feature-extraction stage, residual blocks, global average pooling, and a binary classification output. The saved training script specified class-imbalance handling through weighted sampling and a focal-loss objective, together with checkpoint selection based on artifact-class F1-score.
+
+The recorded implementation specified 40 training epochs and a stratified random division of dynamic-level records into training and validation populations. The split procedure did not explicitly group observations by subject. Therefore, different dynamics from the same fetus could occur in both partitions, limiting the extent to which validation performance could be interpreted as generalization to previously unseen subjects.
+
+The recovered classifier metadata contained 600 eligible dynamics from 35 subjects, comprising 508 good-quality and 92 artifact-positive observations. This corresponded to an artifact-positive proportion of 15.3\%. The imbalance between the two classes was relevant to both model optimization and the interpretation of classification accuracy.
+
+Although the training implementation and a referenced classifier checkpoint were identified, the available evidence did not establish a complete execution-linked training history, the exact selected epoch, or the subject identities used to develop the checkpoint associated with the recovered predictions. Consequently, training convergence and independent validation performance could not be reconstructed reliably. The subsequent numerical analysis was therefore restricted to the available prediction export rather than treated as an independently verified model-selection result.
+
+\subsubsection{Classification Performance}
+\label{subsec:results_3d_classification_metrics}
+
+The recovered ResNet prediction file contained artifact probabilities and binary classification outputs for 600 dynamics. These predictions were matched to the original classifier metadata using the recorded case identifiers, allowing comparison with the corresponding dynamic-level quality labels.
+
+Within this exported population, the classifier correctly identified all 92 artifact-positive dynamics and classified 469 of the 508 good-quality dynamics as good. The remaining 39 good-quality dynamics were classified as artifact-positive. The reconstructed confusion matrix is presented in Table~\ref{tab:3d_resnet_full_export_confusion}.
+
+\begin{table}[htbp]
+\centering
+\caption{Classification outcomes reconstructed from the complete 600-record 3D ResNet prediction export. These results have not been established as an independent held-out test evaluation.}
+\label{tab:3d_resnet_full_export_confusion}
+\begin{tabular}{lrrr}
+\hline
+Reference label & Predicted good & Predicted artifact & Total \\
+\hline
+Good & 469 & 39 & 508 \\
+Artifact-positive & 0 & 92 & 92 \\
+\hline
+Total & 469 & 131 & 600 \\
+\hline
+\end{tabular}
+\end{table}
+
+The corresponding overall accuracy was 93.5\%, with an artifact sensitivity of 100.0\% and a specificity of 92.3\%. Artifact precision was 70.2\%, while the artifact-class F1-score was 82.5\%. Table~\ref{tab:3d_resnet_full_export_metrics} summarizes these measures.
+
+\begin{table}[htbp]
+\centering
+\caption{Reconstructed classification metrics for the complete 3D ResNet prediction export.}
+\label{tab:3d_resnet_full_export_metrics}
+\begin{tabular}{lr}
+\hline
+Metric & Value \\
+\hline
+Accuracy & 93.5\% \\
+Artifact sensitivity (recall) & 100.0\% \\
+Specificity & 92.3\% \\
+Artifact precision & 70.2\% \\
+Artifact F1-score & 82.5\% \\
+\hline
+\end{tabular}
+\end{table}
+
+These measurements describe agreement between the saved predictions and the labels of all 600 exported records. They do not, by themselves, establish performance on unseen fetuses or an independently held-out test dataset. In particular, the recovered prediction file did not contain an explicit train/validation/test assignment for each evaluated dynamic. The observed sensitivity of 100.0\% must therefore be interpreted within this restricted evidential context.
+
+The earlier development presentations reported approximately 94\% classification accuracy for a volumetric approach. Although this is numerically similar to the 93.5\% accuracy reconstructed here, similarity of aggregate metrics does not establish that both results originated from the same checkpoint, evaluation population, or experimental protocol.
+
+A separate 71-dynamic dataset was recovered for the direct comparison of the 3D and 2D pipelines. That matched population is examined in Section~\ref{sec:results_3d_vs_2d} rather than combined with the present 600-record analysis.
+
+\subsubsection{Classification Errors and Observed Limitations}
+\label{subsec:results_3d_classification_errors}
+
+The complete prediction export contained 39 classification errors, all corresponding to false-positive artifact detections. No false-negative artifact classifications were recorded within this population. The false-positive observations were distributed across multiple subjects and dynamics rather than confined to a single recorded case.
+
+The predicted artifact probabilities for the misclassified good-quality dynamics included values close to the binary decision boundary as well as higher-confidence positive predictions. This indicates that the observed errors were not exclusively borderline decisions, although the available classification table alone cannot establish the underlying image characteristics responsible for them.
+
+The recovered records did not provide a verified one-to-one qualitative assessment linking each false-positive prediction to its original MRI volume and segmentation-derived crop. Accordingly, these errors cannot be attributed conclusively to fetal motion, signal variation, incorrect brain localization, or other specific imaging characteristics from the classification export alone.
+
+A further limitation concerns the independence of evaluation observations. The training implementation described a random dynamic-level split rather than an explicitly subject-disjoint partition, while the recovered prediction export covered the complete 600-record classifier dataset. Without the executed training split and checkpoint-specific evaluation history, it remains unresolved whether individual exported observations were previously encountered during model development.
+
+The results therefore demonstrate that the saved 3D ResNet predictions reproduce a high level of agreement with the available dynamic-quality annotations. However, the reconstructed full-export metrics should not be interpreted as proof of equivalent performance on independent subjects or during prospective acquisition. The matched comparison and the relationship between artifact sensitivity and false-positive decisions are examined further in Section~\ref{sec:results_3d_vs_2d}.
+
+\section{3D Acquisition-Workflow Simulation}
+\label{sec:results_3d_end_to_end}
+
+The end-to-end evaluation of the 3D pipeline considered the progression from fetal-brain localization to volumetric region-of-interest extraction and artifact classification. In addition to individual model performance, this evaluation examined the feasibility of connecting the processing stages into an automated quality-assessment workflow and the consequences of segmentation and classification errors.
+
+The available evidence comprised recovered volumetric classification records, exploratory segmentation and cropping outputs, and historical scanner-workflow simulation reports. These sources describe different stages of system development and are therefore distinguished in the following results.
+
+\subsection{Segmentation-to-Classification Processing}
+\label{subsec:results_3d_processing}
+
+The 3D pipeline was designed to process each diffusion dynamic as a complete volumetric observation. Brain masks generated by nnU-Net were used to define the region of interest for volumetric cropping, after which the cropped image was supplied to the 3D ResNet artifact classifier.
+
+The recovered classifier dataset contained 600 dynamic-level records from 35 subjects, comprising 508 good-quality and 92 artifact-positive dynamics. Corresponding classifier predictions were available for all 600 exported records. These data establish the availability of prepared inputs and classifier outputs for the recorded population.
+
+However, the completeness of the classifier prediction export does not establish that all originally acquired dynamics successfully passed through every preceding processing stage. The recovered dataset had already undergone file matching, preprocessing, and eligibility filtering. Dynamics excluded before classifier dataset construction, including cases with unavailable images or unusable segmentation outputs, could not be enumerated from the final prediction table alone.
+
+Consequently, the 600-record classification population should be interpreted as the recovered set of eligible downstream observations rather than as the denominator for an independently verified full-pipeline success rate. A separate execution log linking original MRI availability, nnU-Net mask generation, brain cropping, and classifier output for every candidate dynamic was not available.
+
+The distinction between successful preprocessing and accurate brain localization is also relevant. A non-empty predicted segmentation mask may permit crop generation without guaranteeing that the extracted region corresponds accurately to the fetal brain. The available final nnU-Net records do not provide sufficient matched reference masks and per-volume overlap measurements to quantify this anatomical reliability.
+
+\subsection{Offline Scanner-Workflow Simulation}
+\label{subsec:results_3d_offline_simulation}
+
+An earlier stage of development investigated an offline scanner-workflow simulation in which newly saved MRI volumes were detected and passed to the image-quality assessment pipeline. The June 2026 supervisor presentation described a folder-watching mechanism that monitored incoming NIfTI files and initiated segmentation, brain cropping, artifact classification, and result logging.
+
+The simulation was intended to approximate the sequence of processing steps that would be required after the availability of a newly acquired diffusion dynamic. The reported logging framework included file arrival, processing initiation, processing completion, and the resulting quality prediction. A Streamlit-based upload-and-predict interface was also presented as an interactive demonstration of the volumetric classification workflow.
+
+The historical simulation also exposed a computational bottleneck in volumetric segmentation. Reported processing times, their differing measurement boundaries, and their comparison with later benchmarks are examined in Section~\ref{sec:results_computational_performance}.
+
+Importantly, the folder-watching simulation processed image files after they became available. It did not demonstrate inference during MRI data acquisition, direct communication with the scanner's acquisition controller, or automated interruption and reacquisition of corrupted dynamics. The recorded experiment therefore supports offline processing feasibility, but not prospective clinical or scanner-integrated operation.
+
+\subsection{Pipeline Failures and Operational Limitations}
+\label{subsec:results_3d_pipeline_failures}
+
+The available records identified failures at two different stages of the volumetric workflow: unsuccessful brain localization during exploratory segmentation and incorrect artifact-quality decisions in the recovered classifier predictions.
+
+The two unsuccessful brain-localization cases recorded in the exploratory five-volume inspection are detailed in Section~\ref{subsec:historical_3d_segmentation}. Their implication for the end-to-end workflow is that an unusable mask can prevent ROI extraction. These early custom U-Net observations cannot establish the failure frequency of the later nnU-Net component.
+
+At the classification stage, the recovered 600-record ResNet prediction export contained 39 false-positive artifact decisions and no false-negative decisions. These errors occurred after construction of the classifier input dataset. Their underlying anatomical or image-quality causes could not be established from the prediction records alone.
+
+The available evidence did not provide a verified case-level linkage between the final nnU-Net segmentation outputs and the 39 misclassified dynamics. Therefore, it was not possible to determine whether individual false-positive decisions arose from genuine image degradation, segmentation inaccuracies, volume cropping, or limitations of the classifier itself.
+
+The end-to-end results consequently establish the implementation of a volumetric segmentation-to-classification workflow, demonstrate the feasibility of an offline file-triggered quality-assessment simulation, and identify processing and classification failure modes. Nevertheless, the recovered evidence does not support a quantitative full-pipeline completion rate, an independently validated end-to-end artifact-detection rate, or a claim of prospective scanner-integrated real-time operation.
+
+\section{Developed 2D Pipeline Results}
+\label{sec:results_2d_segmentation}
+
+The two-dimensional segmentation pipeline employed a MobileNetV3-U-Net model to identify the fetal brain within individual diffusion MRI slices. Its performance was evaluated using the recorded training and validation histories, segmentation metrics obtained on the held-out test population, and additional per-slice measurements associated with subsequent brain-region cropping. The results are presented in terms of model selection, overall segmentation performance, variation across image conditions, and representative localization failures.
+
+\subsection{Training Convergence and Model Selection}
+\label{subsec:results_2d_segmentation_training}
+
+The MobileNetV3-U-Net segmentation experiment was recorded over 51 training epochs. The training history showed a progressive reduction in training loss and an increase in training Dice, while validation performance exhibited greater variation between epochs.
+
+During the first epoch, training Dice was 0.6612 and validation Dice was 0.0244. By epoch 5, these values had increased to 0.8829 and 0.8194, respectively. Improvements continued during subsequent training, although the validation Dice did not increase monotonically.
+
+The highest recorded validation Dice of 0.8749 was achieved at epoch 39, with a corresponding validation IoU of 0.8471 and validation loss of 0.0918. At this epoch, training Dice was 0.9288. By the final recorded epoch, training Dice had increased slightly to 0.9303, whereas validation Dice was 0.8710. The epoch selected by validation Dice therefore differed from the final training epoch.
+
+% FIGURE PENDING: H01_segmentation_dice_history.pdf
+% Insert a real figure environment once the source PDF is committed.
+The recorded training and validation trajectories are available in \texttt{H01\_segmentation\_dice\_history.pdf}, pending insertion into the thesis figure directory.
+
+The training and validation loss curves provide complementary evidence of optimization behavior. Although training loss declined substantially during the experiment, the validation loss fluctuated rather than decreasing uniformly. The selected validation Dice maximum provides the principal reference point for interpreting the recorded model-selection outcome.
+
+\subsection{Segmentation Performance on the Test Set}
+\label{subsec:results_2d_segmentation_test}
+
+The recorded segmentation test evaluation comprised 3,168 two-dimensional MRI slices, including 1,902 slices containing reference fetal-brain regions and 1,266 slices without reference brain content.
+
+The test evaluation reported a Dice coefficient of 0.8620 and an intersection over union (IoU) of 0.8339. Brain-region sensitivity was 0.9063 and specificity was 0.9989. The recorded test loss was 0.1006. The segmentation model contained approximately 6.69 million trainable parameters.
+
+\begin{table}[htbp]
+\centering
+\caption{Reported segmentation performance of MobileNetV3-U-Net on the 3,168-slice test population.}
+\label{tab:2d_segmentation_test_metrics}
+\begin{tabular}{lr}
+\hline
+Metric & Value \\
+\hline
+Dice coefficient & 0.8620 \\
+Intersection over union & 0.8339 \\
+Sensitivity & 0.9063 \\
+Specificity & 0.9989 \\
+Test loss & 0.1006 \\
+Model parameters & 6.69 million \\
+\hline
+\end{tabular}
+\end{table}
+
+The high specificity indicates that the model generally distinguished background pixels from the relatively small fetal-brain regions. Nevertheless, the overall overlap metrics summarize images with differing amounts of brain content and do not fully characterize segmentation performance within the brain-containing subset.
+
+The separate brain-present-slice evaluation previously reported a mean Dice of 0.9106 and a median Dice of 0.9700 across 1,902 slices. The difference between these values indicates that the distribution included a subset of substantially poorer segmentation outcomes despite high overlap in many individual images.
+
+The metric values in Table~\ref{tab:2d_segmentation_test_metrics} were taken from the recorded test evaluation. The precise averaging implementation, including its treatment of empty reference masks, remains relevant when comparing these aggregate measurements against the per-slice Dice distributions.
+
+\subsection{Segmentation Performance Across Image Conditions}
+\label{subsec:results_2d_segmentation_subgroups}
+
+To investigate segmentation behavior under different acquisition-quality conditions, per-slice overlap measurements were examined for the restricted set of 1,529 brain-present slices subsequently considered for artifact-classification cropping. These slices belonged to the held-out classifier test partition and were stratified according to the original quality annotation of their parent dynamic.
+
+Among 1,258 slices from good-labelled dynamics, mean Dice was 0.9511 and median Dice was 0.9746. In contrast, the 271 slices from artifact-positive dynamics had a mean Dice of 0.8081 and median Dice of 0.9562.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-slice segmentation overlap and predicted-crop availability in the restricted classifier test population, grouped by parent dynamic quality annotation.}
+\label{tab:2d_segmentation_label_subgroups}
+\begin{tabular}{lrrrr}
+\hline
+Parent dynamic label & Slices & Mean Dice & Median Dice & Crops unavailable \\
+\hline
+Good & 1,258 & 0.9511 & 0.9746 & 2 \\
+Artifact-positive & 271 & 0.8081 & 0.9562 & 28 \\
+\hline
+Total & 1,529 & 0.9258 & 0.9728 & 30 \\
+\hline
+\end{tabular}
+\end{table}
+
+The lower mean Dice in the artifact-positive group demonstrates greater variability in brain localization among slices belonging to degraded dynamics. The median Dice remained relatively high in both groups, indicating that many artifact-labelled images could still be segmented accurately, while a smaller number of poor outcomes reduced the mean substantially.
+
+The difference was also evident in predicted-mask availability. Among good-labelled slices, two of 1,258 (0.16\%) failed to produce a usable predicted crop, compared with 28 of 271 (10.33\%) artifact-labelled slices. These outcomes were associated with empty or unusable predicted masks.
+
+% FIGURE PENDING: R01_segmentation_dice_distribution.pdf
+The per-slice Dice distributions are provided in \texttt{R01\_segmentation\_dice\_distribution.pdf}, pending insertion into the thesis figure directory.
+
+These subgroup results are based on inherited dynamic-level quality labels. They therefore indicate an association between the parent dynamic's quality category and segmentation reliability, rather than proving that every individual slice in the artifact-positive group visibly contains an artifact.
+
+\subsection{Qualitative Segmentation Results}
+\label{subsec:results_2d_segmentation_qualitative}
+
+Qualitative inspection of selected test slices illustrated the variation in segmentation outcomes. The recorded examples included accurate fetal-brain localization, incomplete segmentation, and cases in which a predicted mask failed to identify a usable brain region.
+
+Representative cases include successful localization, poor-overlap masks that still yielded crops, and empty-mask failures. Their case identifiers, Dice values, and crop outcomes are presented together in Section~\ref{subsec:results_crop_qualitative}, where the downstream implications can be assessed without duplicating the examples.
+
+Overall, the recorded test evaluation showed substantial segmentation overlap alongside uneven performance across parent-dynamic quality groups. Section~\ref{sec:results_roi_reliability} examines whether the resulting masks produced usable and anatomically appropriate classifier inputs.
+
+\subsection{EfficientNet-B0 Classification Results}
+\label{sec:results_2d_classification}
+
+The two-dimensional artifact-classification stage employed EfficientNet-B0 to distinguish good-quality from artifact-positive fetal diffusion MRI slices. Two classifier variants were evaluated: an oracle-crop model trained using reference brain masks and a predicted-crop model trained using automatically generated brain regions from MobileNetV3-U-Net segmentation. This separation enabled the classification results to be examined under different brain-localization conditions.
+
+The classification targets were inherited from the quality annotations of the corresponding diffusion dynamics. Consequently, the reported results measure agreement with weak slice-level labels rather than independently confirmed artifact visibility in each individual slice. The evaluation included separate test populations for the two classifier variants and a common population of 1,499 slices for matched comparison.
+
+\subsubsection{Training and Validation Performance}
+\label{subsec:results_2d_classification_training}
+
+The recovered EfficientNet-B0 training histories contained 12 recorded epochs for the oracle-crop classifier and 17 epochs for the predicted-crop classifier. Both experiments showed decreasing training losses over their recorded optimization periods, while validation losses increased after the initial epochs.
+
+For the oracle-crop classifier, training loss decreased from 0.5571 in the first epoch to 0.0832 at epoch 12. Over the same interval, validation loss increased from 0.6078 to 1.2013. The highest recorded validation F1-score was 0.2611 at epoch 10, whereas the highest validation ROC-AUC of 0.7197 occurred at epoch 1.
+
+Similarly, the predicted-crop classifier's training loss decreased from 0.5655 to 0.0553 over 17 epochs, while validation loss increased from 0.6168 to 1.4502. The highest recorded validation F1-score was 0.2540 at epoch 15, and the highest validation ROC-AUC was 0.7289 at epoch 12.
+
+The differences between the epochs achieving the highest validation F1-score and ROC-AUC show that the two performance criteria did not identify the same operating point. Although the training histories are available, the recovered evidence does not conclusively establish the exact checkpoint-selection criterion associated with every subsequent test prediction export.
+
+The divergence between decreasing training loss and increasing validation loss indicates deteriorating validation loss despite continued optimization of the training objective. This pattern is consistent with limited generalization and possible overfitting, although the training histories alone do not establish its precise cause.
+
+% FIGURE PENDING: oracle- and predicted-classifier training/validation loss curves
+% Original exported figures were misnamed H02_segmentation_loss_history.pdf
+% under each respective classifier folder; correct their filenames and titles
+% before inserting them as a side-by-side LaTeX figure.
+
+\subsubsection{Oracle-Crop Classification Results}
+\label{subsec:results_oracle_classification}
+
+The oracle-crop classifier was evaluated on 1,529 slices from four held-out subjects. The population contained 1,258 good-labelled slices and 271 artifact-labelled slices, with all labels inherited from the corresponding diffusion dynamics.
+
+The recovered test predictions contained 1,144 true negatives, 114 false positives, 200 false negatives, and 71 true positives. This corresponded to an accuracy of 79.5\%, artifact sensitivity of 26.2\%, specificity of 90.9\%, precision of 38.4\%, and F1-score of 31.1\%. The ROC-AUC was 0.6742 and average precision was 0.3632.
+
+The classifier therefore correctly identified most slices inherited from good-quality dynamics but missed 200 of the 271 slices inherited from artifact-positive dynamics. Despite using brain crops defined by reference segmentation masks, artifact sensitivity remained low at the recorded decision threshold.
+
+These findings indicate that access to accurately localized brain regions did not eliminate the difficulty of predicting the inherited artifact labels. The weak-label formulation is relevant here, since a positive target could be assigned to a slice even when the visual evidence of the parent dynamic's artifact was not present within that slice.
+
+\subsubsection{Predicted-Crop Classification Results}
+\label{subsec:results_predicted_crop_classification}
+
+The predicted-crop classifier was evaluated on the 1,499 slices for which automatic segmentation produced usable brain crops. This population contained 1,256 good-labelled and 243 artifact-labelled slices.
+
+Within this population, the classifier produced 1,122 true negatives, 134 false positives, 186 false negatives, and 57 true positives. The corresponding accuracy was 78.7\%, artifact sensitivity was 23.5\%, specificity was 89.3\%, precision was 29.8\%, and F1-score was 26.3\%. The ROC-AUC was 0.6335 and average precision was 0.2593.
+
+These results were obtained on a subset of the original 1,529-slice test population. The missing 30 predicted crops were excluded from the classification prediction file, including 28 slices originating from artifact-positive dynamics and two from good-quality dynamics. Consequently, the predicted-crop classifier metrics are conditional on successful crop generation.
+
+This distinction prevents the classification accuracy from being interpreted as end-to-end performance across all eligible slices. Furthermore, the oracle- and predicted-crop classifiers were trained separately, so differences in their results cannot be attributed exclusively to segmentation errors.
+
+\subsubsection{Matched Oracle-versus-Predicted Comparison}
+\label{subsec:results_matched_crops}
+
+To compare the two classifier variants under identical sample availability, the recovered matched evaluation file was used to restrict the analysis to 1,499 common slices. This subset comprised 1,256 good-labelled and 243 artifact-labelled slices.
+
+On this matched population, the oracle-crop classifier produced 1,142 true negatives, 114 false positives, 196 false negatives, and 47 true positives. The predicted-crop classifier produced 1,122 true negatives, 134 false positives, 186 false negatives, and 57 true positives. Table~\ref{tab:results_matched_oracle_predicted} summarizes the paired results.
+
+\begin{table}[htbp]
+\centering
+\caption{Classification performance of the oracle- and predicted-crop EfficientNet-B0 models on the same 1,499 test slices. Positive targets are inherited from dynamic-level quality labels. Average precision summarizes the precision--recall curve and is distinct from trapezoidal PR-AUC.}
+\label{tab:results_matched_oracle_predicted}
+\begin{tabular}{lrr}
+\hline
+Metric & Oracle crop & Predicted crop \\
+\hline
+Evaluated slices & 1,499 & 1,499 \\
+True negatives & 1,142 & 1,122 \\
+False positives & 114 & 134 \\
+False negatives & 196 & 186 \\
+True positives & 47 & 57 \\
+Accuracy & 79.3\% & 78.7\% \\
+Artifact sensitivity & 19.3\% & 23.5\% \\
+Specificity & 90.9\% & 89.3\% \\
+Precision & 29.2\% & 29.8\% \\
+F1-score & 23.3\% & 26.3\% \\
+ROC-AUC & 0.6440 & 0.6335 \\
+Average precision & 0.2656 & 0.2593 \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURE PENDING: R04 matched confusion matrices (n=1499)
+% FIGURE PENDING: R05 matched ROC curves (n=1499)
+% Add the exported PDFs once committed to the thesis figure directory;
+% ensure captions identify weak slice targets and the matched cohort.
+
+The oracle-crop classifier achieved slightly higher accuracy, specificity, ROC-AUC, and average precision. In contrast, the predicted-crop classifier identified ten additional artifact-labelled slices, increasing sensitivity from 19.3\% to 23.5\%, but also generated 20 additional false-positive classifications.
+
+The matched results therefore did not establish uniform superiority of either crop strategy across all evaluation measures. Their relative performance depended on whether the emphasis was placed on correct classification of good-labelled slices, detection of artifact-labelled slices, or discrimination across thresholds.
+
+The ROC-AUC values of 0.6440 and 0.6335 indicate limited discrimination against the inherited slice-level targets. No statistical significance or confidence interval for the paired difference was established from the reported analysis, and the modest numerical difference should not be interpreted as a demonstrated advantage.
+
+Importantly, both classifiers were evaluated against weak labels derived from dynamic-level annotations. Furthermore, the matched analysis excluded the 30 slices for which automatic cropping failed. The effect of segmentation reliability, including these excluded observations and anatomically inaccurate but technically successful crops, is examined in Section~\ref{sec:results_roi_reliability}.
+
+Overall, the classification experiments demonstrate that the 2D pipeline was able to produce artifact-probability estimates from both oracle and predicted brain crops, but that artifact sensitivity remained limited. The results highlight the distinction between successful fetal-brain localization, successful crop generation, and reliable classification of artifact-positive image content.
+
+\section{Brain Region Extraction and Crop Reliability}
+\label{sec:results_roi_reliability}
+
+The reliability of the two-dimensional region-of-interest (ROI) extraction stage was evaluated by examining whether predicted brain masks produced usable crops and whether those crops corresponded spatially to the reference fetal-brain regions. This evaluation distinguished technical crop-generation success from anatomical localization accuracy. The analysis used the saved crop metadata for the training, validation, and test partitions, with detailed error analysis performed on the 1,529-slice test population.
+
+\subsection{Crop Generation Success and Failure}
+\label{subsec:results_crop_success}
+
+Reference-mask-based oracle crops were available for all 9,113 selected classification slices. In contrast, predicted-mask-based cropping successfully produced 8,951 crops, while 162 slices did not yield a usable predicted crop. The overall predicted-crop availability was therefore 98.2\%.
+
+The training partition contained 5,954 successful predicted crops from 6,078 selected slices, corresponding to 98.0\% availability. The validation partition produced 1,498 crops from 1,506 slices (99.5\%), and the test partition produced 1,499 crops from 1,529 slices (98.0\%). These results are summarized in Table~\ref{tab:roi_crop_availability}.
+
+\begin{table}[htbp]
+\centering
+\caption{Oracle- and predicted-crop availability across the subject-based classification partitions.}
+\label{tab:roi_crop_availability}
+\begin{tabular}{lrrrr}
+\hline
+Partition & Selected slices & Oracle crops & Predicted crops & Failed crops \\
+\hline
+Training & 6,078 & 6,078 & 5,954 & 124 \\
+Validation & 1,506 & 1,506 & 1,498 & 8 \\
+Test & 1,529 & 1,529 & 1,499 & 30 \\
+\hline
+Total & 9,113 & 9,113 & 8,951 & 162 \\
+\hline
+\end{tabular}
+\end{table}
+
+All 30 failed predicted crops in the test metadata were associated with empty predicted segmentation masks. No failed test crops were recorded with a non-empty predicted mask. Thus, the recorded failures occurred at the mask-generation stage rather than because a crop could not be extracted from a non-empty mask.
+
+Crop failure was concentrated among slices from artifact-positive dynamics. The exact subgroup counts and rates are reported in Table~\ref{tab:2d_segmentation_label_subgroups}; crop availability was lower in the artifact-positive subgroup.
+
+% FIGURE PENDING: R02 predicted-crop generation outcomes stratified by parent dynamic quality label.
+% Insert only after committing the original, verified image PDF.
+
+The 30 failed test slices originated from two subjects: 22 from \texttt{mibirth013901\_nz} and eight from \texttt{mibirth014701\_nz}. These failures occurred across 12 distinct subject--dynamic combinations. Consequently, the failures were clustered within a limited number of subjects and dynamics, rather than representing 30 independent fetal observations.
+
+The substantially greater crop-failure frequency in artifact-positive dynamics is relevant to downstream artifact classification. Because predicted-crop classifier evaluation required a usable crop, the 28 failed slices from artifact-positive dynamics were excluded from its 1,499-slice test population. This exclusion altered the evaluated class distribution and means that classification metrics conditional on successful crop generation do not describe every selected test slice.
+
+\subsection{Segmentation Quality and Crop Reliability}
+\label{subsec:results_crop_quality}
+
+Technical crop-generation success was not equivalent to accurate fetal-brain localization. To examine this distinction, segmentation Dice scores were evaluated alongside predicted-crop availability.
+
+The parent-dynamic subgroup Dice distributions are reported in Table~\ref{tab:2d_segmentation_label_subgroups}. Here, the relevant distinction is between anatomical overlap and the binary ability to produce a crop; a nonempty prediction is not necessarily an accurate one.
+
+Among the 1,499 successfully generated predicted crops, 21 had segmentation Dice values below 0.5. These observations represented approximately 1.4\% of the successfully cropped test population. Although a crop was available in each case, its underlying predicted mask had poor spatial agreement with the reference brain region.
+
+Combining these observations with the 30 empty-mask failures, 51 of the 1,529 test slices had Dice values below 0.5. Of these, 30 had no predicted crop, whereas 21 had a technically successful crop despite poor localization. The corresponding outcome counts are summarized in Table~\ref{tab:roi_low_dice}.
+
+\begin{table}[htbp]
+\centering
+\caption{Relationship between predicted-crop availability and low segmentation overlap in the 1,529-slice test population. The low-Dice groups are subdivisions of the total, not additional observations.}
+\label{tab:roi_low_dice}
+\begin{tabular}{lr}
+\hline
+Outcome & Slices \\
+\hline
+Predicted crop successfully generated & 1,499 \\
+Predicted crop unavailable (empty mask) & 30 \\
+Successful crop with Dice below 0.5 & 21 \\
+All test slices with Dice below 0.5 & 51 \\
+\hline
+\end{tabular}
+\end{table}
+
+The distinction is relevant because crop availability alone would classify the 21 low-overlap examples as successful. A crop-success indicator therefore captures whether a classifier input can be produced, but not whether that input contains the intended anatomical region.
+
+The crop metadata also showed a difference between training, validation, and test populations. Mean Dice among successfully generated predicted crops was approximately 0.9631 for training, 0.9609 for validation, and 0.9443 for testing. These descriptive values suggest greater localization variability in the test population, although differences between the partition compositions prevent a direct causal interpretation.
+
+These findings demonstrate that ROI reliability requires assessment of both mask availability and segmentation overlap. A non-empty mask may allow the pipeline to continue while still producing a crop that poorly represents the fetal brain.
+
+\subsection{Qualitative Crop and Classification Failure Cases}
+\label{subsec:results_crop_qualitative}
+
+The selected MRI examples provide visual evidence of the distinction between successful segmentation, inaccurate localization, and complete crop failure. The revised qualitative panel contains original MRI slices, reference and predicted segmentation masks, and corresponding crop representations, with identifiers linking each example to its evaluation metadata.
+
+Two examples from the good-labelled subject \texttt{fetus9\_nz} illustrate relatively successful localization. Dynamic 13, slice 19, achieved a Dice coefficient of 0.9913, indicating close agreement between the reference and predicted masks. Dynamic 20, slice 11, achieved a Dice coefficient of 0.8996 and retained a usable predicted crop despite lower segmentation overlap.
+
+The artifact-positive example from \texttt{mibirth014701\_nz}, dynamic 20, slice 15, illustrates a different outcome. Its predicted segmentation had a Dice coefficient close to zero, yet a predicted crop was generated. This demonstrates how a non-empty but anatomically inaccurate segmentation mask can pass the technical crop-generation condition.
+
+In contrast, \texttt{mibirth013901\_nz}, dynamic 15, slice 20, had a near-zero Dice coefficient and no usable predicted crop. This example represents an explicit interruption of the automatic ROI-generation stage caused by a missing predicted brain region.
+
+% FIGURE PENDING: R09_revised_identified.pdf (actual, correctly identified MRI/mask/crop example panel).
+
+These cases establish two separate outcomes: missing crops after empty-mask predictions, and crops generated from masks with poor anatomical agreement. The recovered data do not quantify the causal effect of individual segmentation errors on classification predictions; moreover, the oracle- and predicted-crop classifiers were trained separately, so their performance differences cannot be attributed solely to predicted-mask accuracy.
+
+\section{Dynamic-Level and Sequential Decision Results}
+\label{sec:results_dynamic_decisions}
+
+The two-dimensional artifact-classification framework generated predictions for individual MRI slices, whereas the original quality annotations were assigned to complete diffusion dynamics. A subsequent evaluation therefore examined the aggregation of slice-level probabilities into dynamic-level quality decisions. In addition to the original aggregation output, two failure-aware policies were evaluated to determine how unsuccessful brain segmentation and crop generation affected the final decisions.
+
+The recovered results included individual predictions for 88 test dynamics and a separate validation-based search over aggregation methods and decision thresholds. These experiments are presented separately from the matched 71-dynamic 3D-versus-2D comparison described in Section~\ref{sec:results_3d_vs_2d}.
+
+\subsection{Dynamic-Level Aggregation Performance}
+\label{subsec:results_dynamic_aggregation}
+
+The dynamic-level test evaluation comprised 88 diffusion dynamics from four held-out subjects. Of these, 70 were annotated as good quality and 18 as artifact-positive. Slice-level artifact probabilities were combined to obtain one score or decision per dynamic.
+
+The original recorded dynamic-level decision rule correctly classified 66 of the 70 good-quality dynamics and three of the 18 artifact-positive dynamics. The remaining predictions comprised four false positives and 15 false negatives. The resulting accuracy was 78.4\%, artifact sensitivity was 16.7\%, specificity was 94.3\%, precision was 42.9\%, and F1-score was 24.0\%.
+
+These results are summarized in Table~\ref{tab:results_original_dynamic}.
+
+\begin{table}[htbp]
+\centering
+\caption{Original 2D dynamic-level classification outcomes on the 88-dynamic test population.}
+\label{tab:results_original_dynamic}
+\begin{tabular}{lr}
+\hline
+Classification outcome & Number \\
+\hline
+True negatives & 66 \\
+False positives & 4 \\
+False negatives & 15 \\
+True positives & 3 \\
+\hline
+Total dynamics & 88 \\
+\hline
+\end{tabular}
+\end{table}
+
+The original aggregation achieved relatively high specificity but failed to identify most artifact-positive dynamics. Consequently, its overall accuracy substantially exceeded its artifact sensitivity. This difference demonstrates the limitations of evaluating dynamic-level artifact detection using accuracy alone in a population containing considerably more good-quality than artifact-positive acquisitions.
+
+The recovered scores yielded a ROC-AUC of 0.6944 and an average precision of 0.3637. These measures describe discrimination across score thresholds; they do not imply that the recorded binary decision threshold achieved comparable artifact sensitivity.
+
+An additional validation-based threshold search examined mean, median, maximum, and top-$k$ aggregation strategies. The recorded search included top-two, top-three, and top-five probability averages, combined with different binary thresholds and optional segmentation-failure criteria. These experiments demonstrated that the final classification outcomes depended on both the aggregation operator and its selected operating threshold.
+
+% FIGURE PENDING: R07 original 88-dynamic confusion matrix and/or R06 score distribution.
+% Source figures require insertion and scientific captions.
+
+\subsection{Failure-Aware Decision Policies}
+\label{subsec:results_failure_aware_policies}
+
+To incorporate failures occurring before classification, an additional decision framework combined the aggregated artifact score with the number of slices for which a predicted crop was unavailable.
+
+The recovered implementation assigned an artifact-positive dynamic decision if either the aggregated classifier score met or exceeded its configured threshold or the number of failed slice crops reached a specified failure threshold. The failure indicator was based on crop or classifier availability, rather than on segmentation Dice, which would require reference brain masks unavailable during deployment.
+
+Two configurations were retained in the experiment: a balanced configuration and a recall-oriented configuration.
+
+The balanced configuration used median aggregation, a probability threshold of 0.93, and a failure threshold of one unavailable crop. The recorded script selected this configuration by maximizing validation F1-score, with recall, specificity, and precision used as tie-breaking criteria.
+
+The recall-oriented configuration used the mean of the five highest available slice probabilities, a probability threshold of 0.98, and the same one-crop failure threshold. Its documented selection procedure prioritized validation recall among configurations satisfying a minimum specificity of 0.85.
+
+The validation dataset contained 86 dynamics, including 80 good-quality and six artifact-positive observations. The selected balanced configuration achieved four true positives, two false negatives, two false positives, and 78 true negatives on that validation population, corresponding to an F1-score of 66.7\%.
+
+When evaluated on the separate 88-dynamic test population, the balanced configuration correctly identified 12 of the 18 artifact-positive dynamics and 66 of the 70 good-quality dynamics. The corresponding sensitivity was 66.7\%, specificity was 94.3\%, precision was 75.0\%, F1-score was 70.6\%, and accuracy was 88.6\%.
+
+The recall-oriented configuration also identified 12 artifact-positive dynamics but generated ten false-positive decisions. Its sensitivity was therefore likewise 66.7\%, while specificity decreased to 85.7\%, precision to 54.5\%, and F1-score to 60.0\%.
+
+The results are summarized in Table~\ref{tab:results_failure_aware_policies}.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison of recorded 2D dynamic-level decision policies on the same 88 test dynamics. The failure-aware rules use missing predicted crops, not reference-mask Dice scores, as an additional decision signal.}
+\label{tab:results_failure_aware_policies}
+\begin{tabular}{lrrr}
+\hline
+Metric & Original rule & Balanced & Recall-oriented \\
+\hline
+True positives & 3 & 12 & 12 \\
+False negatives & 15 & 6 & 6 \\
+False positives & 4 & 4 & 10 \\
+True negatives & 66 & 66 & 60 \\
+Accuracy & 78.4\% & 88.6\% & 81.8\% \\
+Artifact sensitivity & 16.7\% & 66.7\% & 66.7\% \\
+Specificity & 94.3\% & 94.3\% & 85.7\% \\
+Precision & 42.9\% & 75.0\% & 54.5\% \\
+F1-score & 24.0\% & 70.6\% & 60.0\% \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURE PENDING: R08 original/balanced/recall-oriented policy comparison.
+% Include the original 88-dynamic denominator and document the decision thresholds.
+
+Relative to the original decision rule, the balanced configuration identified nine additional artifact-positive dynamics without increasing the total number of false-positive decisions in the recorded test population. This increased artifact sensitivity from 16.7\% to 66.7\% and F1-score from 24.0\% to 70.6\%.
+
+Examination of the balanced policy's individual predictions showed that ten of its 12 true-positive decisions were triggered by the segmentation-failure criterion, while two were triggered by the classifier-score criterion. Of the four false-positive decisions, two were associated with segmentation failure and two with the classifier threshold. The two decision criteria therefore contributed differently to artifact detection and false alarms.
+
+The recall-oriented policy identified the same number of artifact-positive dynamics but produced six additional false positives compared with the balanced policy. Although it was designed to prioritize sensitivity, no additional true-positive detections were observed on this test population.
+
+These findings demonstrate that incorporating crop-generation failure materially changed the recorded dynamic-level classification outcomes. However, they do not establish that segmentation failure is itself a reliable artifact detector in a broader population. A failed brain crop may be associated with poor image quality, but it may also arise from model limitations unrelated to a clinically relevant artifact.
+
+The recovered script documents a validation-based parameter search followed by application of selected configurations to the test set. Nevertheless, the available evidence does not independently establish that every recorded output was generated without later manual adjustment or that the same test population was never consulted during development. Furthermore, the validation population contained only six artifact-positive dynamics, limiting confidence in the stability of the selected operating thresholds.
+
+The balanced policy therefore represents the strongest recorded operating point among the three evaluated decision rules on this test population, but the observed improvement should not be interpreted as definitive evidence of generalization to independent future acquisitions.
+
+\subsection{Sequential Decision Experiments}
+\label{subsec:results_sequential_status}
+
+The broader research objective considered the possibility of examining slices sequentially and identifying artifact-positive dynamics before all slices had been processed. Such an approach would require an ordered sequence of slice-level inference results, a defined stopping condition, and a measurable first-decision position.
+
+The recovered evidence established retrospective slice-to-dynamic aggregation and the application of failure-aware policies after the available slice predictions had been assembled. However, it did not provide a verified experiment documenting first-trigger slice indices, decisions made using only the preceding slices, or measured processing time saved through early stopping.
+
+Consequently, no quantitative sequential detection rate, number of processed slices before stopping, or latency reduction attributable to an early-decision rule can be reported from the available evidence.
+
+The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~\ref{sec:results_computational_performance}, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
+
+\section{Matched Comparison of 3D and 2D Pipelines}
+\label{sec:results_3d_vs_2d}
+
+The three-dimensional and two-dimensional artifact-detection pipelines were compared using a common set of diffusion dynamics. Unlike the preceding slice-level evaluations, this analysis used the complete diffusion dynamic as the unit of prediction for both approaches. The comparison examined artifact sensitivity, specificity, overall classification performance, and the distribution of false-positive and false-negative decisions.
+
+The recovered matched prediction records allowed the reported confusion matrices to be reconstructed on identical observations. Nevertheless, the independence of the 3D evaluation population from model training and the exact provenance of the comparison experiment could not be fully established. The results are therefore presented as a matched comparison of recorded predictions, rather than as conclusive evidence of generalization to independent subjects.
+
+\subsection{Matched Dynamic-Level Evaluation Cohort}
+\label{subsec:results_matched_dynamic_cohort}
+
+The matched comparison comprised 71 diffusion dynamics from four subjects. Of these, 59 were labelled good quality and 12 were labelled artifact-positive. Each dynamic was represented by a reference quality label and corresponding binary predictions from the 3D and 2D pipelines.
+
+The recovered dataset included 19 dynamics from \texttt{fetus9\_nz}, 19 from \texttt{fm0317\_nz}, 17 from \texttt{mibirth013901\_nz}, and 16 from \texttt{mibirth014701\_nz}. The numbers of artifact-positive dynamics in these subjects were zero, four, five, and three, respectively. No duplicate subject--dynamic identifiers were identified.
+
+The 3D approach classified each dynamic using a volumetric ResNet prediction. The 2D approach combined slice-level information into a dynamic-level decision, including a segmentation-failure indicator. The recovered 2D records contained the aggregated artifact score, classifier decision flag, segmentation-failure flag, and final binary quality prediction.
+
+The reconstructed predictions reproduced the confusion matrices documented in the September 2026 comparison presentation. The 3D prediction labels also matched the corresponding records in the recovered 600-dynamic ResNet prediction export.
+
+However, the matching of identifiers and prediction labels does not independently establish that the 71-dynamic population was excluded from ResNet training or checkpoint selection. The source recovery process also identified the matched CSV as a candidate reconstruction whose original execution provenance requires confirmation. These qualifications are retained when interpreting the results.
+
+\subsection{Classification Performance Comparison}
+\label{subsec:results_matched_pipeline_metrics}
+
+The 3D pipeline correctly identified all 12 artifact-positive dynamics, while the 2D pipeline identified six and missed the remaining six. The 3D approach therefore achieved an artifact sensitivity of 100.0\% within this population, compared with 50.0\% for the 2D approach.
+
+The relationship was reversed for correctly identifying good-quality dynamics. The 3D classifier generated nine false-positive artifact decisions among 59 good dynamics, whereas the 2D approach generated four. Corresponding specificities were 84.7\% and 93.2\%.
+
+The confusion matrices are summarized in Table~\ref{tab:results_matched_pipeline_confusion}.
+
+\begin{table}[htbp]
+\centering
+\caption{Dynamic-level classification outcomes for the matched 71-dynamic comparison population.}
+\label{tab:results_matched_pipeline_confusion}
+\begin{tabular}{lrr}
+\hline
+Outcome & 3D ResNet & 2D failure-aware QC \\
+\hline
+True positives & 12 & 6 \\
+False negatives & 0 & 6 \\
+False positives & 9 & 4 \\
+True negatives & 50 & 55 \\
+\hline
+Total evaluated & 71 & 71 \\
+\hline
+\end{tabular}
+\end{table}
+
+Overall classification accuracy was 87.3\% for the 3D approach and 85.9\% for the 2D approach. Artifact precision was 57.1\% and 60.0\%, respectively, while the F1-scores were 72.7\% and 54.5\%.
+
+\begin{table}[htbp]
+\centering
+\caption{Performance metrics for the matched 3D and 2D dynamic-level evaluation.}
+\label{tab:results_matched_pipeline_performance}
+\begin{tabular}{lrr}
+\hline
+Metric & 3D ResNet & 2D failure-aware QC \\
+\hline
+Accuracy & 87.3\% & 85.9\% \\
+Artifact sensitivity & 100.0\% & 50.0\% \\
+Specificity & 84.7\% & 93.2\% \\
+Artifact precision & 57.1\% & 60.0\% \\
+Artifact F1-score & 72.7\% & 54.5\% \\
+\hline
+\end{tabular}
+\end{table}
+
+% FIGURE PENDING: Side-by-side confusion matrices on the matched n=71 cohort.
+% Include exact class counts, positive-class definition, and provenance warning.
+
+The higher artifact sensitivity of the 3D approach was accompanied by more false-positive decisions. Conversely, the 2D approach provided greater specificity at the cost of missing half of the artifact-positive dynamics. The difference in overall accuracy was limited to one additional correctly classified dynamic for the 3D approach, despite the larger difference in artifact sensitivity.
+
+The matched prediction records also allowed examination of agreement between the two methods. Both pipelines correctly classified 52 dynamics. The 3D model alone produced the correct decision in ten dynamics, while the 2D model alone was correct in nine. No dynamic was incorrectly classified by both approaches in the recovered matched file. Thus, the two approaches made substantially different errors, even though their overall numbers of correct classifications were similar.
+
+\subsection{Error Trade-offs and Evaluation Limitations}
+\label{subsec:results_matched_pipeline_limitations}
+
+The recorded 2D decision combined artifact-classification information with segmentation-failure information. Among the ten dynamics assigned an artifact-positive decision by the 2D pipeline, three were triggered by the classifier decision flag and seven by the segmentation-failure flag. Of the seven failure-triggered decisions, five corresponded to artifact-positive dynamics and two to good-quality dynamics.
+
+This distinction indicates that segmentation failure contributed materially to the 2D pipeline's artifact-detection behavior in the matched comparison. However, a segmentation-failure flag is not equivalent to direct visual evidence of an artifact, and its use as an artifact-positive decision rule introduces the possibility of rejecting good-quality dynamics because brain localization failed.
+
+The small number of artifact-positive observations also limits interpretation. With only 12 positive dynamics, each additional correctly detected artifact corresponds to an 8.3-percentage-point change in sensitivity. Moreover, the 71 dynamics originated from only four subjects, and observations within the same subject cannot be treated as independent biological samples. No subject-clustered uncertainty estimate or formal paired statistical comparison was established for this analysis.
+
+A more substantial limitation concerns evaluation provenance. The recovered 3D classifier prediction export contained all 600 records from the corresponding classifier dataset, including the 71 dynamics used in the comparison. The available evidence did not establish which observations were used for ResNet training and checkpoint selection. Therefore, possible training--evaluation overlap cannot be excluded. The 3D results must not be interpreted as independently demonstrated generalization to previously unseen subjects.
+
+The provenance of the final 2D aggregation rule within the 71-dynamic experiment also requires qualification, particularly regarding threshold selection and the treatment of segmentation failures. Although the saved records reproduce the reported binary decisions, their presence does not by itself demonstrate that the operating rule was selected independently of the evaluated population.
+
+The matched comparison therefore describes recorded decisions on this particular cohort, not performance guaranteed on independently collected prospective data. Additional dynamic-level decision experiments are reported in Section~\ref{sec:results_dynamic_decisions}.
+
+\section{Computational Performance}
+\label{sec:results_computational_performance}
+
+Computational performance was evaluated to assess the feasibility of automated image-quality analysis during fetal diffusion MRI acquisition. The experiments included segmentation inference benchmarks, slice-level processing measurements, prepared-volume classification timings, and an earlier offline scanner-workflow simulation. Because these measurements were obtained under different experimental conditions and processing boundaries, the results are presented separately before considering their implications for real-time operation.
+
+\subsection{Two-Dimensional Inference Latency}
+\label{subsec:results_2d_latency}
+
+The MobileNetV3-U-Net segmentation model was evaluated using a batch-size-one inference benchmark on an NVIDIA RTX PRO 6000 Blackwell Server Edition GPU partition (MIG 1g.24gb). The recovered benchmark records specified 50 warm-up iterations and 200 measured iterations, with automatic mixed precision enabled.
+
+One recorded run achieved a mean segmentation inference time of 2.759\,ms per slice, with a median of 2.758\,ms and a 95th percentile of 2.776\,ms. A second recovered run reported a mean of 2.748\,ms, a median of 2.747\,ms, and a 95th percentile of 2.758\,ms. These measurements were limited to segmentation inference and did not represent the complete segmentation-to-classification process.
+
+A separate September 2026 benchmark reported processing times for the individual stages of the 2D pipeline. The reported mean times were 0.472\,ms for segmentation preprocessing, 2.302\,ms for MobileNetV3-U-Net inference, 0.312\,ms for crop preprocessing, and 2.148\,ms for EfficientNet-B0 inference. The presentation reported a successful-slice processing time of 5.239\,ms and a separate dynamic-aggregation time of 0.048\,ms.
+
+\begin{table}[htbp]
+\centering
+\caption{Reported processing times for individual stages of the 2D pipeline in the September evaluation. The reported total was not independently reconstructed from the available per-slice output.}
+\label{tab:results_2d_stage_latency}
+\begin{tabular}{lr}
+\hline
+Processing stage & Reported mean time \\
+\hline
+Segmentation preprocessing & 0.472\,ms \\
+MobileNetV3-U-Net inference & 2.302\,ms \\
+Brain-crop preprocessing & 0.312\,ms \\
+EfficientNet-B0 inference & 2.148\,ms \\
+Successful-slice processing & 5.239\,ms \\
+Dynamic aggregation & 0.048\,ms \\
+\hline
+\end{tabular}
+\end{table}
+
+The four reported preprocessing and inference components sum to 5.234\,ms, differing slightly from the displayed successful-slice total of 5.239\,ms. The presentation also contained a separately reported total of 5.257\,ms, which could not be reconciled directly with the component means or the additional aggregation measurement. The original timing script was recovered, but the corresponding complete per-slice timing output was not available for independent recalculation. These values are therefore retained as reported measurements rather than combined into a reconstructed end-to-end estimate.
+
+The difference between the 2.302\,ms segmentation inference time reported in September and the approximately 2.75\,ms measurements in the recovered batch-size-one benchmark also indicates that the two experiments should not be treated as identical. The exact correspondence between their execution conditions and model configurations could not be established.
+
+An earlier estimate of 0.541\,ms per slice was obtained from batch-throughput measurements using a batch size of 32. This value represents average throughput-derived processing cost and is not equivalent to sequential single-slice inference latency. Accordingly, it was not used as the principal estimate of latency for processing a newly available MRI slice.
+
+The recorded 5.239\,ms successful-slice timing provides evidence that the 2D segmentation and classification stages can be executed with low computational latency under the reported benchmark conditions. However, this figure does not include the complete scanner-to-decision workflow and is conditional on successful processing of the slice.
+
+\subsection{Three-Dimensional Processing Latency}
+\label{subsec:results_3d_latency}
+
+The computational evaluation of the 3D pipeline involved two distinct measurement scopes: classification using an already prepared volumetric brain crop and the earlier complete segmentation-to-classification workflow.
+
+The September 2026 presentation reported a mean processing time of 5.901\,ms per volume for the prepared-crop 3D ResNet classification path. This measurement included the processing associated with the prepared classifier input and ResNet inference, but excluded nnU-Net brain segmentation and the generation of the original brain-region crop. It therefore represented a downstream classification-stage measurement rather than complete volumetric quality-assessment latency.
+
+The earlier scanner-workflow simulation reported substantially longer processing times. The June 2026 update described approximately 15--25 seconds per scan, with nnU-Net segmentation identified as the principal computational bottleneck. The September presentation separately referred to historical full-pipeline processing times of approximately 17--20 seconds per volume.
+
+These reported ranges are broadly consistent with a workflow in which volumetric segmentation contributes substantially more processing time than classification on an already prepared crop. Nevertheless, the available records do not establish that both historical reports used the same hardware, model versions, input dimensions, or measurement boundaries.
+
+The recovered HPC evidence also did not provide a complete execution-linked timing table for the final nnU-Net segmentation, volumetric preprocessing, crop extraction, and ResNet classification stages. As a result, a reproducible mean or percentile latency for the complete final 3D pipeline could not be calculated from the available records.
+
+\subsection{Processing-Time Comparison and Feasibility}
+\label{subsec:results_latency_comparison}
+
+The principal timing observations are summarized in Table~\ref{tab:results_runtime_scope}, with their measurement boundaries explicitly distinguished.
+
+\begin{table}[htbp]
+\centering
+\caption{Available computational performance evidence for the 2D and 3D pipelines. Measurement boundaries differ and do not permit a direct end-to-end speed ranking.}
+\label{tab:results_runtime_scope}
+\begin{tabular}{p{0.27\textwidth}p{0.20\textwidth}p{0.40\textwidth}}
+\hline
+Experiment & Processing time & Measurement scope \\
+\hline
+2D segmentation, batch size 1 & 2.748--2.759\,ms/slice & Segmentation inference only; two recovered runs \\
+2D successful-slice pipeline & 5.239\,ms/slice & Reported preprocessing, segmentation, cropping and classification \\
+3D prepared-crop classification & 5.901\,ms/volume & Prepared-volume classification; nnU-Net segmentation excluded \\
+Historical 3D scanner simulation, June & Approx.\ 15--25\,s/scan & Earlier offline volume-processing workflow \\
+Historical 3D scanner simulation, September & Approx.\ 17--20\,s/volume & Historical full-pipeline report; version match unverified \\
+\hline
+\end{tabular}
+\end{table}
+
+The measurements demonstrate that the neural-network inference stages can operate substantially faster than the complete historical volumetric processing workflow. However, a direct comparison between the 5.239\,ms 2D measurement and the 5.901\,ms 3D measurement would be misleading because the former includes several slice-processing stages whereas the latter begins with an already prepared volumetric crop.
+
+Similarly, the reported 2D per-slice time cannot be directly compared with the historical 3D processing time per volume. A complete 2D dynamic would require repeated slice processing, management of segmentation or crop failures, aggregation of the available predictions, and any additional data-loading or acquisition-related operations. The timing records did not establish a complete measured elapsed time from the arrival of a diffusion dynamic to its final quality decision under the same conditions used for the 3D pipeline.
+
+The September presentation included illustrative calculations for sequentially processing 18 or 32 slices using the reported average 2D slice time. These calculations indicated the potential computational benefit of processing fewer slices, but they were arithmetic projections rather than measurements of a functioning early-stopping experiment. They therefore do not establish an observed reduction in time to artifact detection.
+
+The available results suggest that the 2D processing strategy is computationally promising for time-sensitive quality assessment. Nevertheless, computational feasibility alone does not establish reliable real-time artifact detection. The classification results in Sections~4.6 and~4.9 demonstrate that sensitivity depends strongly on the chosen decision rule, while the segmentation and ROI analyses identify additional failure conditions that must be considered in an operational system.
+
+These measurements support offline computational feasibility only. The absence of prospective scanner integration, already established for the offline simulation in Section~\ref{subsec:results_3d_offline_simulation}, remains a limitation of any acquisition-time interpretation.
+
+\section{Summary of Experimental Findings}
+\label{sec:results_summary}
+
+The findings can be summarized in terms of volumetric classification, slice-wise localization and classification, dynamic-level decisions, and computational feasibility. The distinct evaluation populations and provenance limitations described throughout this chapter remain essential to their interpretation.
+
+The 3D experiments demonstrated the development of a volumetric segmentation-to-classification workflow. The recovered ResNet prediction export contained 600 dynamics and yielded an accuracy of 93.5\%, artifact sensitivity of 100.0\%, and specificity of 92.3\%. However, the independence of these predictions from model training could not be established. Similarly, although the nnU-Net segmentation stage was used to prepare volumetric classifier inputs, independently verified held-out segmentation overlap metrics were unavailable. The 3D findings therefore document the recorded pipeline behavior without establishing its generalization performance on previously unseen subjects.
+
+The 2D segmentation test achieved a Dice coefficient of 0.8620 and an IoU of 0.8339. The ROI analysis additionally showed that successful crop generation and accurate anatomical localization were distinct outcomes: some masks failed to produce a crop, while others yielded a crop despite poor overlap.
+
+The EfficientNet-B0 classification experiments showed limited discrimination against weak slice-level artifact labels. On the matched population of 1,499 slices, the oracle- and predicted-crop classifiers achieved ROC-AUC values of 0.6440 and 0.6335, respectively. Artifact sensitivities were 19.3\% and 23.5\%. Neither crop strategy consistently outperformed the other across all classification metrics. These results also demonstrated that successful brain segmentation and cropping did not necessarily translate into reliable identification of inherited artifact-positive targets.
+
+In the 88-dynamic test population, failure-aware decision-making improved artifact sensitivity relative to the original aggregation rule without increasing false positives for the balanced configuration. The small positive validation cohort and unresolved execution provenance restrict claims about the stability of that selected operating point.
+
+The matched 71-dynamic comparison revealed different error patterns between the pipelines; however, uncertainty about 3D training--evaluation independence prevents a definitive generalization ranking.
+
+The computational results show promising slice-level processing times, but heterogeneous timing scopes prevent a verified end-to-end speed comparison. Neither prospective scanner integration nor acquisition-time early stopping was demonstrated.
+
+Overall, the experiments established the feasibility of constructing both volumetric and slice-wise fetal dMRI artifact-assessment workflows and identified important differences in their observed behavior. The principal findings were the dependence of 2D segmentation reliability on image-quality conditions, the limitations of classification using inherited dynamic-level labels, and the substantial influence of failure-aware decision rules on dynamic-level artifact detection. The available results support further investigation of automated fetal dMRI quality control, while independent subject-level validation, consistent end-to-end timing, and prospective scanner-based evaluation remain necessary to establish operational reliability.

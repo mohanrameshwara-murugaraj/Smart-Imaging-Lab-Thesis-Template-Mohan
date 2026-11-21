@@ -126,22 +126,121 @@ Segmentation overlap, slice classification, and dynamic-level quality assessment
 \section{Preliminary 3D Experimental Results}
 \label{sec:results_3d_segmentation}
 
-Volumetric brain segmentation was investigated as the first processing stage of the 3D artifact-detection pipeline. The experiments initially examined a custom three-dimensional U-Net architecture and subsequently adopted nnU-Net for fetal-brain localization prior to volumetric cropping and artifact classification. The available results are presented separately because the two approaches differed in their training procedures and evaluation evidence.
+The preliminary experimental phase combined custom 3D U-Net fetal-brain segmentation, segmentation-guided volumetric cropping, handcrafted feature extraction, and Random Forest artifact classification. The recovered measurements characterize training, a small inference inspection, and exploratory classification rather than independently validated model performance. The documented limitations included incomplete subject independence, empty predicted masks, and erroneous correspondence between cropped MRI inputs and quality annotations.
 
-\subsection{Historical Segmentation Experiments}
+\subsection{Custom 3D U-Net Segmentation Results}
 \label{subsec:historical_3d_segmentation}
 
-The initial segmentation experiment employed a custom 3D U-Net trained using 770 MRI--brain-mask pairs. A random volume-level partition assigned 616 pairs to training and 154 pairs to testing. The model was trained for 25 epochs, and the recorded training history showed a progressive improvement in spatial overlap between predicted and reference masks.
+The custom 3D U-Net used 770 prepared MRI--mask pairs, divided randomly at the volume-entry level into 616 training and 154 test entries. Its recorded training history comprised 25 epochs. Table~\ref{tab:historical_unet_training} summarizes the available checkpoint measurements.
 
-The training Dice coefficient increased from 0.7825 in the first epoch to 0.9656 at epoch 25. Over the same period, training loss decreased from 0.6177 to 0.0361. The largest improvement occurred during the initial epochs, followed by smaller fluctuations as training progressed. The corresponding trajectories are available as historical figures \texttt{F04\_historical\_3D\_training\_dice.pdf} and \texttt{F05\_historical\_3D\_training\_loss.pdf}, pending placement in the thesis figure directory.
+\begin{table}[htbp]
+\centering
+\caption{Selected historical custom 3D U-Net training checkpoints. Values are training metrics and do not establish independent test performance.}
+\label{tab:historical_unet_training}
+\begin{tabular}{rrr}
+\hline
+Epoch & Training loss & Training Dice \\
+\hline
+1 & 0.6177 & 0.7825 \\
+5 & 0.1192 & 0.9334 \\
+10 & 0.0650 & 0.9444 \\
+15 & 0.0550 & 0.9490 \\
+20 & 0.0415 & 0.9607 \\
+25 & 0.0361 & 0.9656 \\
+\hline
+\end{tabular}
+\end{table}
 
-These measurements demonstrate improved agreement on the training data over the recorded optimization period. However, no separate validation history or independently selected best-validation checkpoint was documented for this experiment. The final training Dice must therefore not be interpreted as held-out segmentation performance.
+Training Dice increased from 0.7825 to 0.9656 while loss decreased from 0.6177 to 0.0361. Improvement was strongest in the initial epochs and then progressed more gradually. No complete executed validation history or independently selected best-validation checkpoint was established. Thus, the final training Dice cannot be interpreted as held-out segmentation performance. The historical training objective also included Dice calculated after hard thresholding, meaning that the BCE component provided the effective differentiable optimization signal, as explained in Section~\ref{subsec:initial_3d_unet}.
 
-A limited inference inspection of five selected volumes produced three predicted masks and associated crops; the remaining two volumes yielded no detectable brain region. The failed cases were dynamic 19 in \texttt{mibirth013801\_nz} and dynamic 19 in \texttt{fetus6\_nz}. These observations concern the exploratory custom 3D U-Net, not the subsequent nnU-Net component.
+\paragraph{Limited inference inspection.}
+A five-volume inspection produced nonempty predicted masks and brain crops for three volumes; the remaining two yielded no brain foreground. Table~\ref{tab:historical_unet_crop_inspection} lists the recorded cases.
 
-Four additional mask comparisons were recorded in the exploratory notebook, with Dice coefficients of 0.7708, 0.7183, 0.3379, and 0.7527. However, the archived evaluation procedure did not reliably establish correspondence between the subject identifiers of all predictions and reference masks. These overlap values were therefore retained only as historical observations and were excluded from the quantitative assessment of the final segmentation pipeline.
+\begin{table}[htbp]
+\centering
+\caption{Exploratory custom 3D U-Net mask and crop availability among five inspected volumes.}
+\label{tab:historical_unet_crop_inspection}
+\begin{tabular}{llp{0.32\textwidth}}
+\hline
+Subject identifier & Dynamic & Result \\
+\hline
+\texttt{mibirth013801\_nz} & 19 & No brain detected \\
+\texttt{mibirth014001\_nz} & 14 & Mask and crop generated \\
+\texttt{fetus17\_nz} & 10 & Mask and crop generated \\
+\texttt{fetus6\_nz} & 19 & No brain detected \\
+\texttt{fetus17\_nz} & 1 & Mask and crop generated \\
+\hline
+\end{tabular}
+\end{table}
 
-Taken together, the exploratory experiments demonstrated that volumetric brain-mask prediction was feasible within the investigated training setting, while also revealing localization failures and limitations in the original evaluation procedure.
+The observed three-of-five (60\%) crop success rate pertains only to this small inspection and is not an estimate of dataset-wide segmentation reliability. The two empty-mask cases demonstrate failure of the normal segmentation-to-crop pathway.
+
+\paragraph{Exploratory overlap measurements.}
+An additional historical notebook evaluation recorded four Dice/IoU pairs (Table~\ref{tab:historical_unet_overlap}).
+
+\begin{table}[htbp]
+\centering
+\caption{Exploratory custom 3D U-Net overlap measurements with incompletely verified subject-to-reference-mask matching.}
+\label{tab:historical_unet_overlap}
+\begin{tabular}{lrr}
+\hline
+Dynamic & Dice & IoU \\
+\hline
+\texttt{dyn10} & 0.7708 & 0.6271 \\
+\texttt{dyn14} & 0.7183 & 0.5604 \\
+\texttt{dyn19} & 0.3379 & 0.2033 \\
+\texttt{dyn1} & 0.7527 & 0.6034 \\
+\hline
+Reported mean & 0.6449 & 0.4986 \\
+\hline
+\end{tabular}
+\end{table}
+
+The archived evaluation retrieved reference masks using incomplete subject-specific linkage; dynamic numbers alone were insufficient to establish correct prediction--reference correspondence. These scores were therefore retained as historical observations, not accepted as valid held-out segmentation results. Their exact relationship to the separate five-volume inference inspection was not conclusively established.
+
+\subsection{Handcrafted Feature and Random Forest Experiments}
+\label{subsec:historical_rf_results}
+
+The exploratory classification approach extracted five descriptors from nonempty brain-centered intensity crops: mean positive intensity, positive-voxel standard deviation, rectangular crop volume, positive-intensity voxel count, and a stabilized mean-to-standard-deviation ratio identified as \texttt{uniformity} in the implementation. The resulting feature table contained four records and eight columns: the five numerical descriptors, quality label, subject identifier, and dynamic identifier.
+
+The source notebook joined crops to quality annotations by dynamic number alone and selected the first matching annotation without reliably checking the subject or case. Different subjects could share a dynamic number, so the resulting binary targets were not verified as correctly matched to their MRI inputs. This defect invalidated any generalization claim based on the recorded classifier metrics.
+
+\paragraph{One-record held-out evaluation.}
+The Random Forest used 200 trees, maximum depth ten, balanced class weights, and seed 42. Three records were used for fitting and one withheld for evaluation. The sole withheld observation was labelled Artifact but predicted Good, giving one false negative and reported accuracy, precision, recall, and F1-score of 0.0. A single observation with unreliable annotation linkage cannot support an estimate of generalization performance.
+
+\paragraph{Four-record development-set evaluation.}
+A separate notebook cell evaluated predictions over all four feature records, including fitted training observations. The recorded metrics were those shown in Table~\ref{tab:historical_rf_metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Historical Random Forest metrics over four development records, not independent held-out predictions.}
+\label{tab:historical_rf_metrics}
+\begin{tabular}{lr}
+\hline
+Metric & Value \\
+\hline
+Accuracy & 0.750 \\
+Precision & 1.000 \\
+Recall & 0.500 \\
+F1-score & 0.667 \\
+ROC-AUC & 0.750 \\
+\hline
+\end{tabular}
+\end{table}
+
+The four-record results differ from the one-record result because the evaluation populations differ. The reported ROC-AUC used binary predicted labels rather than continuous artifact scores and therefore was not a conventional probability-score ranking analysis. Because the predictions included development observations and the labels lacked reliable subject correspondence, neither metric set was retained as a valid comparison benchmark.
+
+\paragraph{Additional exploratory grouping.}
+An exploratory pathology grouping for \texttt{large HC} recorded a mean predicted binary value of 0.25. Such an average describes the fraction of positive binary predictions, not a calibrated artifact probability. With only four unreliable records, the grouping did not support any conclusion about pathology and artifact occurrence.
+
+\subsection{Findings from Preliminary Model Development}
+\label{subsec:historical_3d_findings}
+
+The preliminary experiments established a functioning segmentation--crop--feature--classification workflow but did not demonstrate validated artifact-detection performance. The custom U-Net achieved training Dice 0.9656, yet did not have independently verified validation or test performance. In the limited five-volume inspection, two empty masks prevented cropping; additional overlap calculations were affected by incomplete subject--reference matching.
+
+The feature extractor summarized global image intensity and crop dimensions without directly encoding localized spatial artifact patterns. The Random Forest experiment contained only four records and used an incorrect crop-to-quality-label join, making its apparent classification scores unsuitable for generalization claims.
+
+These observations motivated adoption of nnU-Net v2 brain localization and a 3D residual classifier capable of learning spatial image representations. This was a development decision, not statistically verified superiority over the invalid Random Forest benchmark. Results from the developed volumetric pipeline follow in Section 5.3.
 
 \section{Developed 3D Pipeline Results}
 \subsection{nnU-Net Segmentation Evaluation}

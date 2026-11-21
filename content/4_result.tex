@@ -371,9 +371,9 @@ The offline folder watcher did not communicate with the scanner controller, inte
 \section{Developed 2D Pipeline Results}
 \label{sec:results_2d_segmentation}
 
-The two-dimensional segmentation pipeline employed a MobileNetV3-U-Net model to identify the fetal brain within individual diffusion MRI slices. Its performance was evaluated using the recorded training and validation histories, segmentation metrics obtained on the held-out test population, and additional per-slice measurements associated with subsequent brain-region cropping. The results are presented in terms of model selection, overall segmentation performance, variation across image conditions, and representative localization failures.
+The developed 2D pipeline combined MobileNetV3-Large U-Net fetal-brain segmentation and EfficientNet-B0 quality classification using brain-centered slice crops. The evaluations measure different targets: anatomical mask agreement for segmentation and agreement with dynamic-inherited quality labels for classification. The separately trained oracle and predicted-crop variants and their different available test populations must be distinguished. Detailed matched crop analysis is presented in Section~\ref{sec:results_roi_reliability}.
 
-\subsection{Training Convergence and Model Selection}
+\subsection{MobileNetV3-U-Net Training and Validation}
 \label{subsec:results_2d_segmentation_training}
 
 The MobileNetV3-U-Net segmentation experiment was recorded over 51 training epochs. The training history showed a progressive reduction in training loss and an increase in training Dice, while validation performance exhibited greater variation between epochs.
@@ -419,7 +419,7 @@ The separate brain-present-slice evaluation previously reported a mean Dice of 0
 
 The metric values in Table~\ref{tab:2d_segmentation_test_metrics} were taken from the recorded test evaluation. The precise averaging implementation, including its treatment of empty reference masks, remains relevant when comparing these aggregate measurements against the per-slice Dice distributions.
 
-\subsection{Segmentation Performance Across Image Conditions}
+\subsection{Segmentation Performance Across Quality Conditions}
 \label{subsec:results_2d_segmentation_subgroups}
 
 To investigate segmentation behavior under different acquisition-quality conditions, per-slice overlap measurements were examined for the restricted set of 1,529 brain-present slices subsequently considered for artifact-classification cropping. These slices belonged to the held-out classifier test partition and were stratified according to the original quality annotation of their parent dynamic.
@@ -451,23 +451,8 @@ The per-slice Dice distributions are provided in \texttt{R01\_segmentation\_dice
 
 These subgroup results are based on inherited dynamic-level quality labels. They therefore indicate an association between the parent dynamic's quality category and segmentation reliability, rather than proving that every individual slice in the artifact-positive group visibly contains an artifact.
 
-\subsection{Qualitative Segmentation Results}
-\label{subsec:results_2d_segmentation_qualitative}
-
-Qualitative inspection of selected test slices illustrated the variation in segmentation outcomes. The recorded examples included accurate fetal-brain localization, incomplete segmentation, and cases in which a predicted mask failed to identify a usable brain region.
-
-Representative cases include successful localization, poor-overlap masks that still yielded crops, and empty-mask failures. Their case identifiers, Dice values, and crop outcomes are presented together in Section~\ref{subsec:results_crop_qualitative}, where the downstream implications can be assessed without duplicating the examples.
-
-Overall, the recorded test evaluation showed substantial segmentation overlap alongside uneven performance across parent-dynamic quality groups. Section~\ref{sec:results_roi_reliability} examines whether the resulting masks produced usable and anatomically appropriate classifier inputs.
-
-\subsection{EfficientNet-B0 Classification Results}
+\subsection{EfficientNet-B0 Training and Validation}
 \label{sec:results_2d_classification}
-
-The two-dimensional artifact-classification stage employed EfficientNet-B0 to distinguish good-quality from artifact-positive fetal diffusion MRI slices. Two classifier variants were evaluated: an oracle-crop model trained using reference brain masks and a predicted-crop model trained using automatically generated brain regions from MobileNetV3-U-Net segmentation. This separation enabled the classification results to be examined under different brain-localization conditions.
-
-The classification targets were inherited from the quality annotations of the corresponding diffusion dynamics. Consequently, the reported results measure agreement with weak slice-level labels rather than independently confirmed artifact visibility in each individual slice. The evaluation included separate test populations for the two classifier variants and a common population of 1,499 slices for matched comparison.
-
-\subsubsection{Training and Validation Performance}
 \label{subsec:results_2d_classification_training}
 
 The recovered EfficientNet-B0 training histories contained 12 recorded epochs for the oracle-crop classifier and 17 epochs for the predicted-crop classifier. Both experiments showed decreasing training losses over their recorded optimization periods, while validation losses increased after the initial epochs.
@@ -485,7 +470,11 @@ The divergence between decreasing training loss and increasing validation loss i
 % under each respective classifier folder; correct their filenames and titles
 % before inserting them as a side-by-side LaTeX figure.
 
-\subsubsection{Oracle-Crop Classification Results}
+\subsection{Slice-Level Artifact Classification Performance}
+
+The oracle-crop classifier used reference-mask-assisted input crops for all 1,529 selected test slices. The predicted-crop classifier processed the 1,499 slices for which automatic brain cropping succeeded. Their aggregate test results are presented below on their respective available cohorts; they do not constitute a matched comparison because 30 predicted crops were unavailable.
+
+\paragraph{Oracle-crop test results.}
 \label{subsec:results_oracle_classification}
 
 The oracle-crop classifier was evaluated on 1,529 slices from four held-out subjects. The population contained 1,258 good-labelled slices and 271 artifact-labelled slices, with all labels inherited from the corresponding diffusion dynamics.
@@ -496,7 +485,7 @@ The classifier therefore correctly identified most slices inherited from good-qu
 
 These findings indicate that access to accurately localized brain regions did not eliminate the difficulty of predicting the inherited artifact labels. The weak-label formulation is relevant here, since a positive target could be assigned to a slice even when the visual evidence of the parent dynamic's artifact was not present within that slice.
 
-\subsubsection{Predicted-Crop Classification Results}
+\paragraph{Predicted-crop test results.}
 \label{subsec:results_predicted_crop_classification}
 
 The predicted-crop classifier was evaluated on the 1,499 slices for which automatic segmentation produced usable brain crops. This population contained 1,256 good-labelled and 243 artifact-labelled slices.
@@ -507,51 +496,37 @@ These results were obtained on a subset of the original 1,529-slice test populat
 
 This distinction prevents the classification accuracy from being interpreted as end-to-end performance across all eligible slices. Furthermore, the oracle- and predicted-crop classifiers were trained separately, so differences in their results cannot be attributed exclusively to segmentation errors.
 
-\subsubsection{Matched Oracle-versus-Predicted Comparison}
-\label{subsec:results_matched_crops}
-
-To compare the two classifier variants under identical sample availability, the recovered matched evaluation file was used to restrict the analysis to 1,499 common slices. This subset comprised 1,256 good-labelled and 243 artifact-labelled slices.
-
-On this matched population, the oracle-crop classifier produced 1,142 true negatives, 114 false positives, 196 false negatives, and 47 true positives. The predicted-crop classifier produced 1,122 true negatives, 134 false positives, 186 false negatives, and 57 true positives. Table~\ref{tab:results_matched_oracle_predicted} summarizes the paired results.
-
 \begin{table}[htbp]
 \centering
-\caption{Classification performance of the oracle- and predicted-crop EfficientNet-B0 models on the same 1,499 test slices. Positive targets are inherited from dynamic-level quality labels. Average precision summarizes the precision--recall curve and is distinct from trapezoidal PR-AUC.}
-\label{tab:results_matched_oracle_predicted}
+\caption{EfficientNet-B0 classification performance on the available complete oracle-crop and successful predicted-crop test populations.}
+\label{tab:results_2d_slice_classification}
 \begin{tabular}{lrr}
 \hline
-Metric & Oracle crop & Predicted crop \\
+Metric & Oracle crops & Predicted crops \\
 \hline
-Evaluated slices & 1,499 & 1,499 \\
-True negatives & 1,142 & 1,122 \\
+Evaluated slices & 1,529 & 1,499 \\
+True negatives & 1,144 & 1,122 \\
 False positives & 114 & 134 \\
-False negatives & 196 & 186 \\
-True positives & 47 & 57 \\
-Accuracy & 79.3\% & 78.7\% \\
-Artifact sensitivity & 19.3\% & 23.5\% \\
+False negatives & 200 & 186 \\
+True positives & 71 & 57 \\
+Accuracy & 79.5\% & 78.7\% \\
+Artifact sensitivity & 26.2\% & 23.5\% \\
 Specificity & 90.9\% & 89.3\% \\
-Precision & 29.2\% & 29.8\% \\
-F1-score & 23.3\% & 26.3\% \\
-ROC-AUC & 0.6440 & 0.6335 \\
-Average precision & 0.2656 & 0.2593 \\
+Precision & 38.4\% & 29.8\% \\
+F1-score & 31.1\% & 26.3\% \\
+ROC-AUC & 0.6742 & 0.6335 \\
+Average precision & 0.3632 & 0.2593 \\
 \hline
 \end{tabular}
 \end{table}
 
-% FIGURE PENDING: R04 matched confusion matrices (n=1499)
-% FIGURE PENDING: R05 matched ROC curves (n=1499)
-% Add the exported PDFs once committed to the thesis figure directory;
-% ensure captions identify weak slice targets and the matched cohort.
+\subsection{Classification Errors and Failure Cases}
 
-The oracle-crop classifier achieved slightly higher accuracy, specificity, ROC-AUC, and average precision. In contrast, the predicted-crop classifier identified ten additional artifact-labelled slices, increasing sensitivity from 19.3\% to 23.5\%, but also generated 20 additional false-positive classifications.
+The dominant recorded error was failure to flag slices from Artifact-labelled dynamics: 200 of 271 in the oracle-crop test and 186 of 243 among predicted-crop classifier inputs. Conversely, the models flagged 114 and 134 Good-labelled slices as Artifact, respectively. These errors are defined relative to inherited dynamic-level targets, not independent slice-level expert annotations. In particular, a false negative against an inherited label need not correspond to a visibly corrupted slice being missed.
 
-The matched results therefore did not establish uniform superiority of either crop strategy across all evaluation measures. Their relative performance depended on whether the emphasis was placed on correct classification of good-labelled slices, detection of artifact-labelled slices, or discrimination across thresholds.
+The two complete classifier test populations differed because predicted crops were missing for 30 originally eligible slices. A missing classifier input is not a Good prediction and should not be counted as a conventional classifier false negative. The unavailable predicted crops were disproportionately associated with Artifact-labelled dynamics. Consequently, numerical differences between the complete oracle and successful predicted-crop metrics cannot be attributed only to mask localization, especially since the classifier variants were trained separately.
 
-The ROC-AUC values of 0.6440 and 0.6335 indicate limited discrimination against the inherited slice-level targets. No statistical significance or confidence interval for the paired difference was established from the reported analysis, and the modest numerical difference should not be interpreted as a demonstrated advantage.
-
-Importantly, both classifiers were evaluated against weak labels derived from dynamic-level annotations. Furthermore, the matched analysis excluded the 30 slices for which automatic cropping failed. The effect of segmentation reliability, including these excluded observations and anatomically inaccurate but technically successful crops, is examined in Section~\ref{sec:results_roi_reliability}.
-
-Overall, the classification experiments demonstrate that the 2D pipeline was able to produce artifact-probability estimates from both oracle and predicted brain crops, but that artifact sensitivity remained limited. The results highlight the distinction between successful fetal-brain localization, successful crop generation, and reliable classification of artifact-positive image content.
+The available confusion matrices and model outputs did not establish case-specific image causes for the observed errors. Matched image, reference mask, predicted mask, and crop inspection is required to investigate localization contributions. Crop failures and the controlled-by-population comparison are analyzed in Section~\ref{sec:results_roi_reliability}; dynamic-level aggregation is examined in Section~\ref{sec:results_dynamic_decisions}.
 
 \section{Brain Region Extraction and Crop Reliability}
 \label{sec:results_roi_reliability}

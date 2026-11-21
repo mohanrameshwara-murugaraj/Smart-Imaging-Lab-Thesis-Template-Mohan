@@ -606,39 +606,49 @@ Historical three-dimensional timing records were retained as a separate measurem
 \section{Experimental Design and Evaluation Protocol}
 \label{sec:experimental-evaluation}
 
-The experimental protocol assessed fetal brain segmentation, slice-level artifact classification, dynamic-level quality-control decisions, and computational performance. Three-dimensional methods developed during the initial phase were considered alongside the subsequent two-dimensional segmentation and classification framework. These analyses were distinguished by their prediction targets: segmentation was compared with spatial brain masks, slice classification with dynamic-derived weak quality labels, and dynamic-level decisions with acquisition-level quality annotations.
+The experimental evaluation examined segmentation quality, artifact classification, reliability of brain-centered cropping, dynamic-level decisions, and computational feasibility. Because the research included preliminary 3D experiments, a developed 3D segmentation-to-classification pipeline, and a subsequent 2D framework, evaluation populations and prediction units differed across experiments. These differences were maintained when interpreting the outcomes. Segmentation predictions were compared with spatial fetal-brain masks; 2D slice-classification predictions were evaluated against quality labels inherited from their parent dynamics; and dynamic-level quality decisions were evaluated against the original acquisition-level annotations.
 
-\subsection{Experimental Configurations and Comparison Design}
+\subsection{Experimental Configurations}
 \label{subsec:experimental-configurations}
 
-The initial volumetric investigations comprised custom 3D U-Net segmentation followed by a feature-based Random Forest classifier, and a later nnU-Net segmentation and residual 3D CNN classification pipeline. The Random Forest experiment used only four feature records and contained an error in linking records to the corresponding subject-specific quality annotations. It was therefore considered an exploratory implementation and not a valid held-out artifact-classification benchmark. The nnU-Net and 3D CNN approach supplied the volumetric predictions used in the later matched 2D-versus-3D comparison.
+\paragraph{Preliminary volumetric experiments.}
+The initial experiments combined a custom 3D U-Net with brain cropping, handcrafted statistical features, and Random Forest classification. The exploratory Random Forest experiment contained four feature records and used an incorrect subject-to-quality-label association. Its numerical performance was therefore not used as a valid independent classification benchmark or to rank models. The custom U-Net's dynamic-entry partitions were not subject independent.
 
-The two-dimensional framework comprised MobileNetV3-Large U-Net brain localization and EfficientNet-B0 artifact classification using brain-centered crops. The documented cohort contained 24 subject groups, partitioned into 16 training, four validation, and four test groups. These predefined assignments were maintained across the two-dimensional processing stages. The original split-generation algorithm and exact subject identifier mapping have not been independently verified.
+\paragraph{Developed volumetric pipeline.}
+The developed 3D pipeline paired nnU-Net v2 brain segmentation with 3D ResNet artifact classification. The documented nnU-Net preparation comprised 600 training and 170 test image--mask entries, with some subject identities occurring in both partitions. The recovered classifier data comprised 600 eligible dynamics with recorded predictions, but the training exposure of these observations and the precise checkpoint-to-export provenance were not conclusively established. Consequently, results reconstructed from this export were not assumed to represent an independently held-out test evaluation.
 
-The prepared segmentation inventory (including background-only images) was distinct from the restricted brain-containing classification dataset. Their exact counts are given in Section~\ref{sec:data-preparation}; this distinction was maintained when defining evaluation denominators.
+\paragraph{Developed slice-wise pipeline.}
+The 2D approach combined MobileNetV3-Large U-Net segmentation, segmentation-dependent ROI cropping, and EfficientNet-B0 classification. Its recorded cohort contained 24 subject groups assigned to training, validation, and testing as 16, four, and four groups, respectively. The documented classification metadata supported disjoint subject identities across partitions. The original split-generation procedure and complete identifier mapping were not independently verified in every recovered record. Brain segmentation and classification used different prepared slice populations, with the segmentation data retaining background-only slices and classification restricted to selected brain-containing slices. Counts and selection criteria are defined in Section~\ref{sec:data-preparation}.
 
-The evaluation investigated segmentation accuracy, slice-level artifact discrimination, the influence of oracle versus predicted brain cropping, dynamic-level aggregation and failure handling, comparison with the volumetric approach, and processing latency. Validation metrics were used for model selection in documented training procedures. Exploratory threshold searches were distinguished from operating points demonstrably fixed before an independent test evaluation.
+\paragraph{Quality-decision experiments.}
+Retrospective experiments investigated aggregation of slice probabilities, operating thresholds, and segmentation-failure-aware dynamic decisions. A separate sequential demonstration iterated over selected slices and applied individual-slice and optional failure-trigger stopping conditions. The retrospective results and demonstration were treated as different protocols; a retrospective dynamic-level score did not establish a prospectively achieved early decision.
 
-\subsection{Segmentation Evaluation}
+Across experiments, observed results were separated from unresolved provenance and from hypothetical follow-on tests. Numerical outcomes are presented in Chapter 5.
+
+\subsection{Segmentation Evaluation Protocol}
 \label{subsec:segmentation-evaluation}
 
-The MobileNetV3-Large U-Net was evaluated against reference brain masks in the subject-separated validation and test subsets. Its pixel-wise outputs were converted to binary foreground predictions using a probability threshold of 0.5. The primary measures were the Dice similarity coefficient, intersection over union (IoU), sensitivity, and specificity, with fetal brain pixels designated as positive.
+The developed 2D segmentation network was evaluated against reference binary fetal-brain masks in the subject-separated validation and test partitions. Segmentation logits were converted to foreground probabilities using sigmoid activation, followed by thresholding at 0.5. Brain pixels were positive and background pixels negative.
 
-For true-positive ($TP$), false-positive ($FP$), false-negative ($FN$), and true-negative ($TN$) pixels, the metrics were defined as
+For pixel-level true positives ($TP$), false positives ($FP$), false negatives ($FN$), and true negatives ($TN$), the evaluated metrics were
 \begin{align}
 \mathrm{Dice} &= \frac{2TP}{2TP+FP+FN}, &
 \mathrm{IoU} &= \frac{TP}{TP+FP+FN},\\
 \mathrm{Sensitivity} &= \frac{TP}{TP+FN}, &
 \mathrm{Specificity} &= \frac{TN}{TN+FP}.
 \end{align}
-The implemented calculations used a stabilizing constant of $10^{-7}$ where required to avoid division by zero. Metrics were computed per slice and then averaged rather than calculated from a single pooled pixel confusion matrix. Consequently, mean Dice and mean IoU need not satisfy the relationship between those metrics for one individual binary mask.
+A numerical stabilizer of $10^{-7}$ was used in implemented calculations where needed to avoid division by zero. The documented evaluation computed measurements per slice before averaging them. Therefore, aggregate mean Dice and mean IoU need not obey the exact relationship that holds for one individual binary mask or a single pooled confusion matrix.
 
-Images with empty reference masks were distinguished from brain-containing slices when interpreting overlap measures. Under the implementation's stabilizing convention, an empty prediction paired with an empty reference can produce a perfect Dice score, without demonstrating brain-localization performance. Empty predicted masks and low-overlap predictions were therefore also examined separately in relation to downstream crop generation.
+The evaluation population included slices without reference brain foreground. Under an empty-mask smoothing convention, an empty reference paired with an empty prediction may receive perfect overlap even though no brain has been localized. Brain-present and background-only slices were therefore distinguished when interpreting overlap measures. Predicted masks were also examined for empty foreground and poor anatomical agreement, since successful crop generation and accurate brain localization are distinct outcomes.
 
-\subsection{Artifact Classification Evaluation}
+Segmentation performance was examined by the parent dynamic's inherited Good or Artifact label for selected slices. These subgroup comparisons measured an association between acquisition quality annotations and segmentation behavior; they did not assume that an artifact was visually present in every individual positively labelled slice. For the final nnU-Net stage, a complete verifiable held-out set of predictions, reference masks, and aggregate segmentation scores was not recovered, and independently validated segmentation performance was not inferred from downstream classifier availability.
+
+\subsection{Artifact Classification Evaluation Protocol}
 \label{subsec:artifact-classification-evaluation}
 
-EfficientNet-B0 predictions were evaluated using the inherited Good (class 0) and Artifact (class 1) slice labels. For each available brain crop, the classifier generated an artifact probability from its two output logits. Performance at a specified classification threshold was summarized using the confusion matrix and the following measures:
+For classification, Good was class 0 and Artifact class 1. The 3D classifier generated one prediction for an eligible dynamic, whereas the 2D classifier generated a prediction for each usable brain-centered slice. In the latter case, the reference label was inherited from the parent dynamic, constituting weak supervision rather than expert annotation of visible slice-level corruption.
+
+At a selected threshold, true positives were correctly flagged Artifact-labelled observations; false positives were Good-labelled observations incorrectly flagged as Artifact; false negatives were Artifact-labelled observations classified as Good; and true negatives were correctly classified Good-labelled observations. The classification measures were
 \begin{align}
 \mathrm{Accuracy} &= \frac{TP+TN}{TP+TN+FP+FN},\\
 \mathrm{Precision} &= \frac{TP}{TP+FP}, &
@@ -646,40 +656,71 @@ EfficientNet-B0 predictions were evaluated using the inherited Good (class 0) an
 \mathrm{Specificity} &= \frac{TN}{TN+FP}, &
 F_1 &= \frac{2TP}{2TP+FP+FN}.
 \end{align}
-Here, $TP$ denotes correctly flagged artifact-labeled slices, $FP$ denotes good-labeled slices incorrectly flagged as artifacts, and $FN$ denotes missed artifact-labeled slices.
+Undefined denominator cases require an explicitly documented numerical convention, rather than implicit interpretation.
 
-Receiver operating characteristic area under the curve (ROC-AUC) and precision--recall analysis were used to examine discrimination across probability thresholds. Where the code calculated average precision, it was identified separately from trapezoidal precision--recall AUC. Because artifact labels were less frequent than Good labels, accuracy alone was not used to characterize the balance between missed corrupted acquisitions and unnecessary alerts.
+Receiver operating characteristic area under the curve (ROC-AUC) and precision--recall analysis were used to examine discrimination over thresholds. Where average precision was calculated, it was distinguished from trapezoidal precision--recall AUC, as these are not identical numerical summaries. Sensitivity and precision were emphasized alongside overall accuracy because Good labels predominated.
 
-Slice-level agreement with inherited labels must not be interpreted as agreement with manually verified visible artifact locations. The unit of analysis and class counts were retained when interpreting the evaluation, and cases lacking a valid brain crop were distinguished from successful classifier predictions.
+Classifier-only metrics were calculated on observations with available model predictions. Missing crops did not receive an artificial low Artifact probability and were evaluated separately through crop availability and failure-aware analysis. The analysis unit, class counts, decision threshold, and population denominator were retained for each reported result.
 
-\subsection{Oracle Versus Predicted Cropping Comparison}
+\subsection{Oracle Versus Predicted Crop Comparison}
 \label{subsec:cropping-comparison}
 
-The effect of automatic fetal brain localization was investigated using reference-mask-based (\emph{oracle}) and predicted-mask-based crops. Both were prepared using the same brain bounding-box margin, square-crop construction, padding, normalization, and $224\times224$ resizing procedure described in Section~\ref{subsubsec:roi-cropping}. The oracle condition provided reference-assisted localization, whereas the predicted condition depended on the segmentation model.
+Two brain-region localization conditions were examined. Oracle cropping used reference brain masks; predicted cropping used MobileNetV3-Large U-Net outputs. Both conditions used the same 15\% bounding-box margins, square-crop construction, boundary padding, intensity preparation, and $224\times224$ resizing described in Section~\ref{subsubsec:roi-cropping}. Reference-assisted localization was not assumed to provide perfect anatomical ground truth.
 
-Two comparison types were distinguished. Applying a fixed classifier to paired oracle and predicted crops for the same subject, dynamic, and slice more directly examines input-crop effects. Evaluating separately trained oracle-crop and predicted-crop classifiers instead compares broader training-and-inference variants; any performance difference cannot be attributed solely to segmentation error.
+The documented test population contained 1,529 eligible reference-mask crops. Predicted cropping provided usable inputs for 1,499 of these slices; 30 had no valid predicted crop. The matched classification comparison therefore used the 1,499 observations available under both conditions, preserving their common subject, dynamic, slice, and label identities. Crop failures were retained in the separate ROI-reliability analysis and were not treated as ordinary Good classifications.
 
-As established in the ROI-generation procedure, predicted cropping may fail and crop availability does not guarantee anatomical accuracy. Matched-crop classification was restricted to observations with both crop types, whereas a complete pipeline evaluation must also account for unavailable inputs. The precise checkpoint correspondence for every archived comparison remains unverified.
+The recorded oracle and predicted classification variants were trained separately. Their matched evaluation consequently compared complete training-and-inference configurations, rather than isolating the causal effect of the mask source while holding the classifier weights fixed. Applying one frozen classifier to paired oracle and predicted crops would offer a more controlled measure of crop-input effects, but that specific controlled comparison was not established from the recovered results.
 
-\subsection{Dynamic-Level Quality Assessment and 2D Versus 3D Comparison}
+Classification metrics were examined alongside predicted-crop availability and segmentation overlap. A nonempty predicted mask could yield a crop despite poor anatomical agreement; thus, technical crop success and localization accuracy were examined separately.
+
+\subsection{Dynamic-Level Evaluation}
 \label{subsec:dynamic-evaluation}
 
-Dynamic-level evaluation used acquisition-quality annotations as reference labels, with Artifact designated as positive. The aggregation functions and available-score handling are defined in the Dynamic-Level Quality Assessment section above. Candidate thresholds were assessed using one confusion-matrix observation per dynamic rather than per slice. The available evidence did not independently establish the precise top-$k$ calculation in all archived variants.
+Dynamic-level analysis combined slice-level classifier outputs using subject and dynamic identifiers, yielding one quality score or decision for each evaluated dynamic. The original dynamic-level Good or Artifact annotation served as the reference target. Mean, median, maximum, and recorded top-$k$ aggregation variants were evaluated as described in Section 4.7. The archived top-$k$ method labels do not independently establish the exact mathematical implementation for every historical evaluation.
 
-Localization failures were recorded separately because slices without usable predicted brain crops could not yield ordinary classifier probabilities. Failure-aware decision configurations were explored, but their exact numerical combination with aggregation thresholds has not been independently reconstructed. Consequently, exploratory operating-point searches were not represented as final thresholds established before test evaluation. The separate sequential demonstration used slice-triggered early stopping and was not assumed to implement the same full-dynamic aggregation rule.
+Candidate probability thresholds were investigated using confusion matrices and class-sensitive metrics. Failure-aware evaluation additionally incorporated unavailable segmentation-derived crops, distinguishing classifier outputs from missing classifier inputs. The recovered implementation included a decision rule that flagged a dynamic when either the aggregated score reached its threshold or the number of failed crops reached a selected failure-count threshold. These operating-point searches were not assumed to have been frozen independently of all later test inspection unless execution provenance established that separation.
 
-The comparison with the nnU-Net and residual 3D CNN approach used a reported matched population of 71 dynamics with available outputs from both pipelines: 59 Good and 12 Artifact. Predictions were compared against the same dynamic-level annotations using classification metrics and error counts. Because the three-dimensional training-set exposure and some operating-point details were not fully verified for these cases, the comparison was interpreted as an exploratory matched analysis rather than proof of equivalent subject-independent generalization.
+The archived validation-based aggregation search contained 86 dynamics, with 80 Good and six Artifact labels. A separate test evaluation contained 88 dynamics, with 70 Good and 18 Artifact labels. Their populations, thresholds, and denominators were kept separate from other experiments.
 
-Other reported dynamic-level populations, including the 88-dynamic two-dimensional quality-control report and an 86-dynamic exploratory aggregation search, were kept distinct from the 71-dynamic matched comparison. Their denominators and configurations were not pooled.
+Dynamic-level metrics included the confusion matrix, accuracy, Artifact sensitivity, specificity, precision, and F1-score, with ROC-AUC and precision--recall summaries where continuous dynamic scores were available. Each dynamic contributed one reference quality label and one decision per evaluated configuration. Slices from the same dynamic were not treated as independent dynamic-level observations.
 
-\subsection{Computational Evaluation and Software Environment}
+The sequential demonstration used a different evaluation mechanism: ordered slice inference and a first-trigger stopping rule. The recovered records did not establish a verified quantitative evaluation of first-trigger positions, early-detection outcomes using only observations available before each decision, or actually measured saved time. Accordingly, retrospective aggregation results were not described as prospectively validated early stopping.
+
+\subsection{Matched 3D Versus 2D Comparison}
+\label{subsec:matched-3d-2d-evaluation}
+
+The two developed pipelines were compared on a matched set of diffusion dynamics for which recorded quality decisions from both approaches were available. The population contained 71 dynamics from four subjects, comprising 59 Good and 12 Artifact-labelled acquisitions. Both methods were evaluated against the same dynamic-level ground-truth annotations on the same 71 identities.
+
+The 3D approach supplied volumetric ResNet-based quality predictions. The 2D approach supplied recorded dynamic-level decisions derived from slice-level evidence and a segmentation-failure indicator. True positives, false positives, false negatives, and true negatives, together with accuracy, Artifact sensitivity, specificity, precision, and F1-score, were compared on the matched population.
+
+Although matched identities remove differences in the evaluated observations, they do not establish equivalent training-data independence. The 3D classifier's training exposure to the matched population could not be conclusively excluded, and original execution provenance and operating-rule selection details were not verified in all respects. The comparison was consequently interpreted as an exploratory matched analysis of recovered predictions, not definitive evidence of generalization to independent fetuses.
+
+The matched sample contained only four subjects, so dynamics within a subject were not independent biological samples. Formal paired significance testing and subject-clustered uncertainty intervals had not been established in the documented analysis. These limitations were retained when interpreting apparent model differences.
+
+\subsection{Computational Performance Measurement}
 \label{subsec:computational-evaluation}
 
-Computational evaluation followed the stage-level timing protocol described under Sequential Quality-Control Implementation. The benchmark distinguished all candidate slices from those with a valid classifier input, and retained stage-specific timing summaries rather than conflating them with scanner-to-decision latency.
+Computational evaluation investigated the timing of image preparation, segmentation inference, brain-crop extraction, artifact classification, and quality-decision processing. Distinct measurement scopes were maintained when considering 2D inference benchmarks, prepared-volume classification, and earlier offline 3D workflow simulation.
 
-The sequential demonstration also recorded the number of slices examined before either a classifier artifact trigger or, when enabled, a localization-failure trigger. Actual measured durations were distinguished from estimated time savings based on unprocessed slices. Benchmark values were interpreted according to their documented boundaries: disk I/O, checkpoint loading, visualization delays, and data transfer were not assumed to be included unless explicitly measured. Earlier three-dimensional timing records did not consistently encompass the same stages and therefore were not treated as directly comparable complete-pipeline runtimes.
+\paragraph{Two-dimensional measurements.}
+The 2D timing protocol examined segmentation preprocessing, MobileNetV3-Large U-Net inference, ROI preparation, EfficientNet-B0 inference, and aggregation where recorded. A recovered batch-size-one segmentation benchmark used 50 warm-up iterations and 200 measured iterations, with automatic mixed precision. Stage-specific measurements were summarized using means, medians, upper percentiles, and maxima where available. The population of candidate slices was distinguished from the subset with successful predicted crops and classifier inputs.
 
-The experiments were implemented in Python using NumPy and NiBabel for image data handling, PyTorch and torchvision for neural-network development, and pandas and scikit-learn for data preparation and evaluation. The volumetric segmentation framework additionally used nnU-Net v2; diagnostic visualization employed Matplotlib and ITK-SNAP where applicable, and the sequential demonstration was implemented in Streamlit.
+\paragraph{Volumetric measurements.}
+The recovered 3D classifier benchmark used already prepared volumetric crops and did not represent the full nnU-Net-to-classification path. Historical folder-monitoring simulation reports covered a broader processing sequence but were not demonstrated to share the same hardware, checkpoint versions, or timing boundaries as later benchmarks. Therefore, 3D classifier-only times and complete 2D slice-processing times were not directly ranked as equivalent end-to-end measures.
 
-CUDA acceleration was used where available, and the training code supported automatic mixed precision. The documented two-dimensional latency benchmark ran on an NVIDIA RTX PRO 6000 Blackwell Server Edition GPU partition configured as MIG 1g.24gb. This device was not presumed to represent the hardware for all historical experiments; complete run-specific software versions and hardware inventories were not available for every stage.
+\paragraph{Sequential timing interpretation.}
+The sequential demonstration recorded processing steps and stop-trigger conditions. Actual time to a decision would require a measured first-trigger time and an appropriate no-stopping comparator. Multiplying the count of unprocessed slices by mean per-slice inference time yields only a projection, not an independently measured acquisition-time saving. Complete scanner-to-decision latency was not established.
+
+Disk input/output, checkpoint loading, GPU synchronization, host--device transfer, visualization delays, scanner acquisition, and control-system communication were not assumed to be included unless measurement records specified them. Reported timing conclusions were limited to the instrumented stages.
+
+\subsection{Software and Hardware Environment}
+\label{subsec:software-hardware-environment}
+
+The experimental workflows were implemented in Python. NiBabel was used to load NIfTI MRI images and masks, NumPy for array manipulation and intensity processing, and pandas for annotation tables and prediction records. PyTorch supported custom segmentation and classification training and inference, while torchvision provided model components for MobileNetV3-Large and EfficientNet-B0. The volumetric segmentation stage additionally used nnU-Net v2. The exploratory Random Forest model, stratified splitting, and classification evaluation used scikit-learn.
+
+Matplotlib supported diagnostic visualization and training/evaluation figures; ITK-SNAP was used where applicable for inspection of volumetric data and masks. Streamlit provided interactive processing demonstrations, including the slice-wise sequential application.
+
+CUDA acceleration and automatic mixed precision were used where compatible resources and scripts permitted. The recovered 2D latency benchmark identified an NVIDIA RTX PRO 6000 Blackwell Server Edition GPU partition configured as MIG 1g.24gb. This hardware was not assumed to represent all historical training and inference runs. Likewise, fixed seeds documented for selected procedures did not establish complete reproducibility across unspecified execution environments. Full run-specific package versions, hardware inventories, and checkpoint provenance could not be reconstructed for every experiment.
+
+Overall, the evaluation protocol distinguished anatomical segmentation from quality classification, slice-level weak targets from dynamic-level reference annotations, classifier-only performance from crop and processing failures, and offline computation from acquisition-time operation. These distinctions govern the interpretation of the experimental findings reported in Chapter 5.
 

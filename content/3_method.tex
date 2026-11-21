@@ -2,47 +2,177 @@
 
 This chapter describes the methods developed and evaluated for automated artifact detection in fetal diffusion magnetic resonance imaging (dMRI). The research initially investigated three-dimensional brain segmentation and artifact classification approaches, followed by the development of a two-dimensional framework for brain localization and image-quality assessment. The following sections describe the imaging dataset, data preparation, segmentation and classification models, dynamic-level quality assessment, sequential processing, and experimental evaluation procedures.
 
-\section{MRI Dataset and Data Acquisition}
+\section{MRI Dataset and Ground-Truth Annotations}
+\label{sec:mri-dataset-ground-truth}
 
-The present study used a dedicated low-field fetal brain diffusion MRI dataset provided for the development and evaluation of artificial intelligence-based artifact detection methods. The imaging data were acquired using a clinical 0.55\,T MAGNETOM Free.Max scanner (Siemens Healthineers, Forchheim, Germany), following the diffusion acquisition protocol described by Aviles Verdera et al.\ in the HERON framework. The acquisition employed a single-shot diffusion-weighted spin-echo echo-planar imaging (DW-SE-EPI) sequence with a repetition time (TR) of 7200\,ms, an echo time (TE) of 129\,ms, and a field of view (FOV) of $400 \times 400$\,mm. The spatial resolution was $3 \times 3 \times 3$\,mm$^3$, with an echo spacing of 0.97\,ms and a partial Fourier factor of 6/8. Diffusion weighting was applied using b-values of 0, 10, 50, 80, 200, 400, 600, and 1000\,s/mm$^2$, with three orthogonal diffusion directions for each non-zero b-value. The published acquisition protocol comprised 35 slices, with an acquisition time of approximately 2.43 minutes.
+The present research used low-field fetal diffusion magnetic resonance imaging (dMRI) data to develop and evaluate automated brain segmentation and artifact classification methods. The available dataset comprised volumetric diffusion-weighted MRI acquisitions, corresponding reference fetal-brain segmentation masks, and image-quality annotations assigned to diffusion dynamics. Initial experiments used complete three-dimensional (3D) volumes; subsequent experiments investigated two-dimensional (2D) slices. These approaches employed distinct prediction units and experimental datasets derived from the available imaging material.
 
-The acquired diffusion MRI data were organized into individual three-dimensional image volumes, referred to as \emph{dynamics}. Each dynamic represents an acquisition obtained under a particular combination of diffusion-weighting parameters. The available imaging data were stored in Neuroimaging Informatics Technology Initiative (NIfTI) format and arranged in subject-specific directories containing individual dynamics. Corresponding fetal brain segmentation masks were provided for each available image volume. These masks were initially generated using an automatic segmentation procedure and subsequently manually corrected to refine the anatomical delineation of the fetal brain. The resulting reference masks were used for segmentation model development and evaluation, as well as for defining the brain regions used in subsequent artifact classification.
+\subsection{Dataset Source and MRI Acquisition}
 
-The accompanying quality annotation table contained 38 case records, each comprising 22 dynamic-level quality annotations, resulting in 836 annotated dynamics. The dataset included additional information on gestational age and fetal pathology where available. Gestational age values were recorded for 22 cases, ranging numerically from 30.14 to 39.28 in the supplied annotation table. Each dynamic was assigned a quality label indicating whether the acquisition was considered good (0), artifact-corrupted (1), or uncertain ($-1$). Of the 836 annotations, 655 were labeled as good, 115 as artifact-corrupted, and 66 as uncertain. The uncertain annotations were excluded from binary artifact classification, leaving 770 dynamics with known quality labels in the annotation table.
+The fetal dMRI data were provided through the research activities of the Smart Imaging Lab. The documented acquisition used a clinical 0.55\,T MAGNETOM Free.Max scanner (Siemens Healthineers, Forchheim, Germany), following the diffusion protocol described by Aviles Verdera et al.\ in the HERON framework \autocite{avilesverdera2025heron}.
 
-The available MRI volumes and their corresponding reference masks formed the basis for the initial three-dimensional experiments and the subsequent two-dimensional processing framework. For the later two-dimensional experiments, a cohort of 24 subject folders was used, comprising 16 training, four validation, and four test subjects. The imaging data were further prepared into individual slices while retaining their original subject and dynamic associations. The preparation of the volumetric data and the subsequent two-dimensional dataset is described in the following sections.
+The published protocol used single-shot diffusion-weighted spin-echo echo-planar imaging (DW-SE-EPI), with repetition time (TR) of 7200\,ms, echo time (TE) of 129\,ms, field of view (FOV) of $400\times400$\,mm$^2$, isotropic resolution of $3\times3\times3$\,mm$^3$, echo spacing of 0.97\,ms, and partial Fourier factor 6/8. Diffusion weighting included $b$-values of 0, 10, 50, 80, 200, 400, 600, and 1000\,s/mm$^2$, with three orthogonal diffusion directions for each non-zero $b$-value.
 
-\section{Data Preparation and Experimental Partitioning}\label{sec:data-preparation}
+The published acquisition description reported 35 slices and an acquisition duration of approximately 2.43 minutes. The present project's image-processing records also expected a through-plane dimension of 36 slices for some volumes. These different recorded values are preserved rather than treated as equivalent without confirmation of the relevant imaging metadata. Because the models were developed on low-field acquisitions, their performance at different field strengths or with different acquisition protocols was not established.
 
-\subsection{Three-Dimensional MRI and Reference Mask Preparation}
+\subsection{Dataset Organization and Diffusion Dynamics}
 
-The three-dimensional experiments used the MRI volumes and manually refined binary brain masks introduced in Section~\ref{sec:data-preparation}. For model preparation, each volume and reference mask was retained as a spatially corresponding pair.
+The imaging data were provided as Neuroimaging Informatics Technology Initiative (NIfTI) files and arranged in subject-specific directories containing individual diffusion acquisitions. In this thesis, a \emph{dynamic} denotes a three-dimensional diffusion-weighted image volume acquired under a particular diffusion-weighting configuration. Each dynamic comprises a spatial sequence of MRI slices.
 
-Before segmentation training, the MRI volumes and reference masks were paired according to their case and dynamic identifiers. The spatial dimensions of each image--mask pair were checked to ensure correspondence between the MRI intensities and the reference segmentation. The masks were prepared as binary segmentation targets, distinguishing background voxels (0) from fetal brain voxels (1). Unlike the later two-dimensional approach, the original volumetric representation was retained to allow the segmentation models to process spatial information across adjacent image slices.
+The resulting data hierarchy comprises subjects, acquisition sequences, diffusion dynamics, and individual slices. The 3D approaches processed a whole dynamic to obtain one quality prediction. The 2D approach processed slices individually and investigated how their outputs could be combined into dynamic-level quality decisions.
 
-For the initial custom 3D U-Net experiments, the paired volumes were loaded and prepared as three-dimensional tensors. Non-finite intensity values were replaced, and the image intensities were scaled relative to the maximum value of each volume. The volumes were subsequently padded to spatial dimensions divisible by eight to accommodate the successive downsampling operations of the network. The corresponding reference masks underwent the same spatial padding to maintain alignment with their MRI volumes. This preprocessing provided consistently shaped image--mask pairs for volumetric segmentation training.
+Subject, dynamic, and slice identifiers were retained during data preparation to associate MRI inputs with reference brain masks and quality labels, maintain experimental partitions, and compare outputs generated by different stages. The supplied quality annotation table contained 38 case--sequence records with 22 dynamic annotation positions per record, resulting in 836 annotation entries. These are entries in the annotation inventory and should not automatically be equated to the number of available MRI image--mask pairs for any experiment.
 
-The subsequent nnU-Net experiments also used paired three-dimensional MRI volumes and reference brain masks. The data were prepared according to the nnU-Net dataset specification, in which each MRI dynamic was treated as an individual segmentation case with a corresponding binary reference label. The nnU-Net framework was then used to determine the preprocessing and network configuration for volumetric segmentation.
+\subsection{Reference Brain Segmentation Masks}
 
-\subsection{Volume Normalization and Spatial Preprocessing}
+Reference fetal-brain segmentation masks accompanied the available volumetric MRI data. The masks were originally generated by an automatic procedure and subsequently manually corrected to refine anatomical delineation. For binary segmentation, foreground (1) represented the fetal brain and background (0) represented surrounding tissue and other image regions.
 
-The three-dimensional MRI volumes underwent intensity normalization and spatial preprocessing to prepare the data for volumetric brain segmentation. Separate preprocessing procedures were employed for the initial custom 3D U-Net and the subsequent nnU-Net experiments, reflecting the input requirements of the respective architectures.
+The reference masks served as voxel-wise targets for the volumetric brain segmentation experiments. For the 2D framework, matching image and mask slices were extracted along the same spatial axis and indexed by subject, dynamic, and slice position, preserving correspondence during supervised segmentation training and evaluation.
 
-For the custom 3D U-Net, non-finite intensity values were replaced with zeros before normalization. Each MRI volume was converted to 32-bit floating-point precision, and its intensity values were divided by the maximum voxel intensity when this value was positive. This scaling reduced differences in the overall intensity magnitude between acquisitions while retaining the relative intensity distribution within each volume. The corresponding brain masks were represented as binary segmentation targets, distinguishing fetal brain tissue from the background.
+Reference masks also defined brain regions in experiments using reference-assisted, or \emph{oracle}, cropping. The word \emph{oracle} denotes use of the available reference mask rather than an automatically predicted mask; it does not establish perfect anatomical ground truth. Architecture-specific cropping procedures and predicted-mask comparisons are detailed later in this chapter.
 
-The MRI volumes and reference masks were subsequently padded along their spatial dimensions to obtain sizes divisible by eight. Padding was applied at the upper end of each dimension, with zero-valued voxels introduced where necessary. The same spatial padding was applied to the MRI and its corresponding mask to preserve anatomical alignment. This ensured compatibility with the three successive downsampling operations of the custom 3D U-Net without requiring spatial resizing of the original images.
+\subsection{Artifact Quality Annotations}
 
-For the nnU-Net experiments, the three-dimensional MRI volumes and corresponding binary masks were processed using the framework's automated preprocessing procedure. The reported {3d\_fullres} configuration used a target voxel spacing of $3 \times 3 \times 3$\,mm$^3$ and a patch size of $40 \times 160 \times 160$ voxels. In contrast to the manually configured preprocessing of the custom 3D U-Net, nnU-Net determines its normalization and spatial preprocessing procedures through dataset-specific planning, using the image properties and network configuration to prepare the training inputs.
+Image-quality annotations were assigned to whole diffusion dynamics, not independently to individual slices. Three annotation categories were present: Good (0), Artifact (1), and Uncertain ($-1$). The original annotation inventory comprised 655 Good entries, 115 Artifact entries, and 66 Uncertain entries, for a total of 836. The corresponding proportions were approximately 78.3\%, 13.8\%, and 7.9\%.
 
-\subsection{Preparation of Three-Dimensional Segmentation Inputs}
+\begin{table}[htbp]
+\centering
+\caption{Distribution of the original dynamic-level quality annotation entries. These counts refer to the annotation inventory, not to a model-specific evaluation cohort.}
+\label{tab:original_dynamic_annotation_counts}
+\begin{tabular}{lrr}
+\hline
+Quality annotation & Entries & Proportion \\
+\hline
+Good (0) & 655 & 78.3\% \\
+Artifact (1) & 115 & 13.8\% \\
+Uncertain ($-1$) & 66 & 7.9\% \\
+\hline
+Total & 836 & 100.0\% \\
+\hline
+\end{tabular}
+\end{table}
 
-For the initial three-dimensional segmentation experiments, the preprocessed MRI volumes and their corresponding reference brain masks were prepared as paired inputs and segmentation targets. Each MRI dynamic was treated as an individual volumetric sample, with the MRI intensity values forming the input and the binary brain mask providing voxel-wise supervision. The custom 3D U-Net used single-channel MRI volumes, with an additional channel dimension introduced to represent the data in the format required for three-dimensional convolutional operations. The corresponding segmentation masks were prepared with matching spatial dimensions to enable voxel-wise comparison between predicted and reference segmentations.
+Uncertain annotations were excluded when preparing binary artifact-classification targets, leaving 770 known-label annotation entries. This number describes label availability, rather than independently verifying the availability of 770 matched MRI--mask files.
 
-For the custom 3D U-Net experiments, the available MRI--mask pairs were randomly divided into training and validation subsets using an 80:20 ratio and a fixed random seed of 42. The partitioning was performed at the dynamic level, rather than grouping all acquisitions from the same subject. Consequently, different dynamics belonging to the same subject could be included in both subsets.
+The original dynamic-level labels could be attached directly to 3D classifier observations. For the 2D classifier, each eligible slice inherited its parent dynamic's known quality label. Thus, an individual slice from an artifact-positive dynamic received a positive target even when visible corruption was not established for that slice. Such labels are \emph{weak slice-level supervision}, not independently annotated slice-level artifact ground truth. The implications are formalized in Section 3.5.3 and the experimental implementation is described below.
 
-For the subsequent nnU-Net experiments, the three-dimensional MRI volumes and reference masks were converted into the dataset representation required by the framework. Each dynamic was assigned a unique case identifier, and the corresponding image and segmentation mask were paired using this identifier. The MRI data were defined as a single imaging channel, while the segmentation targets contained two classes: background (0) and fetal brain (1). A dataset description was generated to specify the imaging modality, segmentation classes, and available training and test cases.
+\subsection{Dataset Composition and Selection Criteria}
 
-The nnU-Net dataset preparation used a randomized dynamic-level partition with a fixed seed of 42. The conversion script allocated 600 image--mask pairs to the training dataset, with the remaining available pairs assigned to the test dataset. The prepared dataset was then used for the subsequent three-dimensional nnU-Net segmentation experiments.
+Distinct experimental populations were prepared for preliminary volumetric segmentation, nnU-Net segmentation, volumetric artifact classification, 2D brain segmentation, and 2D artifact classification. Their sizes should not be pooled or interpreted as interchangeable.
+
+The preliminary custom 3D U-Net and subsequent nnU-Net experiments drew from a recorded population of 770 volumetric MRI--mask entries, using different allocations. The recovered 3D ResNet classifier dataset contained 600 dynamic-level records, but their exact training--evaluation provenance was not fully established.
+
+For the later 2D framework, 24 subject groups were assigned to training, validation, and test partitions comprising 16, four, and four subjects. The 2D segmentation dataset included brain-present as well as background-only slices, whereas the classifier required a restricted population of selected brain-containing slices.
+
+The 2D classification selection applied an anatomical brain-presence criterion and restricted the eligible slice indices to 8--25, inclusive. This yielded 6,078 training slices, 1,506 validation slices, and 1,529 test slices. Detailed loading and preprocessing, dataset inventories, partition construction, exclusion rules, and handling of label imbalance follow in Section~\ref{sec:data-preparation}.
+
+\section{Data Preparation and Experimental Partitioning}
+\label{sec:data-preparation}
+
+The volumetric and slice-wise model families required different image representations and preprocessing operations. Preparation included MRI--mask pairing, handling of invalid intensities, model-specific spatial normalization, partitioning of related observations, and construction of binary quality targets. The procedures below distinguish the preliminary 3D pipeline, the nnU-Net configuration, and the later 2D framework.
+
+\subsection{MRI Volume Loading and Preprocessing}
+
+Available NIfTI MRI volumes were associated with reference brain masks using case and dynamic identifiers. Spatial correspondence was checked at the image--mask pair level, and the reference masks were represented as binary labels distinguishing background from fetal-brain voxels. For 3D segmentation, each dynamic remained a complete volume with a single MRI input channel and a correspondingly shaped segmentation target.
+
+The initial custom 3D U-Net used three-dimensional numerical tensors with an added channel dimension for volumetric convolution. In the subsequent nnU-Net experiment, each dynamic was assigned an individual case identifier and its paired image and reference mask were formatted according to the nnU-Net dataset specification, including the image-channel and segmentation-class definitions.
+
+For 2D processing, the NIfTI volumes were read using NiBabel. The recorded extraction procedure identified a through-plane axis by an expected length of 36 when applicable; otherwise, the smallest dimension could be selected if it was unambiguous. MRI and mask arrays were sliced along the same identified axis, using corresponding slice indices. Each image slice was retained as a 32-bit floating-point array, and masks were binarized. Subject, dynamic, and slice identifiers were preserved for subsequent data selection, segmentation, classification, and dynamic-level aggregation.
+
+\subsection{Intensity Normalization and Spatial Preparation}
+
+Intensity preparation differed across the three experimental stages and was not assumed to follow one identical procedure.
+
+\paragraph{Preliminary custom 3D U-Net.}
+Non-finite MRI intensities were replaced with zeros, and each volume was cast to 32-bit floating-point representation. When the maximum voxel intensity was positive, the volume was divided by that maximum:
+\begin{equation}
+I_{\mathrm{norm}}(x,y,z)=\frac{I(x,y,z)}{I_{\max}},\qquad I_{\max}>0.
+\end{equation}
+The MRI volume and corresponding reference mask were then padded with zeros at the upper end of each spatial dimension to obtain dimensions divisible by eight. Identical spatial padding preserved the alignment of input and segmentation target. This preparation accommodated three successive downsampling operations without resizing the original volumetric anatomy.
+
+\paragraph{nnU-Net v2.}
+The nnU-Net experiments used the framework's dataset-specific automated planning and preprocessing, rather than the custom U-Net's manual intensity scaling and padding configuration. The documented \texttt{3d\_fullres} setup specified target spacing of $3\times3\times3$\,mm$^3$ and patch size $40\times160\times160$ voxels. The model and configuration are described in Section 4.4.
+
+\paragraph{2D brain segmentation.}
+Intensity normalization was performed independently for each extracted MRI slice. The 1st and 99th intensity percentiles were computed from finite, non-zero pixels when at least 32 such values were available; otherwise, all finite values were considered. Intensities were clipped to these bounds and scaled to $[0,1]$:
+\begin{equation}
+I_{\mathrm{norm}}=
+\frac{\operatorname{clip}(I,P_1,P_{99})-P_1}{P_{99}-P_1},
+\qquad P_{99}>P_1.
+\end{equation}
+The recorded implementation handled non-finite intensities and represented slices containing no finite intensities as zero arrays. For degenerate percentile bounds, the implementation-specific fallback must be verified rather than inferred from the equation.
+
+The normalized MRI slices were resized to $160\times160$ pixels using bilinear interpolation. Reference masks were resized to matching dimensions with nearest-neighbor interpolation to preserve binary labels. Image and mask arrays were then represented as single-channel tensors for segmentation.
+
+\paragraph{2D artifact classification.}
+Rather than using the full slice, the classifier received a brain-centered crop generated using either the reference or predicted segmentation mask. Crop intensities were normalized separately, constrained to $[0,1]$, and resized to $224\times224$ pixels using bilinear interpolation. The detailed crop construction, padding, and oracle-versus-predicted variants belong to Section 4.6.
+
+\subsection{Subject-Level and Dynamic-Level Data Splits}
+
+Distinct partitioning procedures were used during the earlier volumetric experiments and later 2D development. This matters because multiple dynamics belong to a subject and multiple correlated slices belong to a dynamic.
+
+\paragraph{Preliminary custom 3D U-Net.}
+A randomized 80:20 split of 770 image--mask entries, using seed 42, allocated 616 entries to training and 154 to testing. The split operated on volumetric entries, not independent subjects. Multiple dynamics from the same fetus could therefore appear in both partitions.
+
+\paragraph{nnU-Net volumetric segmentation.}
+The subsequent prepared dataset allocated 600 image--mask entries to training and 170 to testing, using a recorded random seed of 42. The corresponding manifest represented 35 subject identifiers, with subjects occurring in both partitions. Thus, these volume-entry evaluations must not be described as completely subject-independent. The later 3D classifier data contained 600 records, but their training, checkpoint-selection, and prediction-export relationship could not be established conclusively.
+
+\paragraph{2D subject-level partitioning.}
+The 2D framework used subject-based splitting to prevent slices and dynamics from the same fetus appearing across different partitions. A recorded two-stage stratified splitting procedure targeted approximately 70\% training, 15\% validation, and 15\% testing, using seed 42 and stratification by whether a subject included artifact-labelled observations. The documented realized allocation was 16 training subjects, four validation subjects, and four test subjects, corresponding to 24 subject groups. The available classification metadata confirmed disjoint subject identifiers across the three partitions, although the original split-generation procedure and complete mapping were not independently verified in all recovered records.
+
+The prepared 2D segmentation inventories included both brain-present and background-only slices:
+\begin{table}[htbp]
+\centering
+\caption{Prepared 2D segmentation inventories by subject-based partition and reference brain-mask presence.}
+\label{tab:method_2d_segmentation_inventory}
+\begin{tabular}{lrrr}
+\hline
+Partition & Total slices & Brain present & Brain absent \\
+\hline
+Training & 9,264 & 8,099 & 1,165 \\
+Validation & 3,168 & 2,028 & 1,140 \\
+Test & 3,168 & 1,902 & 1,266 \\
+\hline
+Total & 15,600 & 12,029 & 3,571 \\
+\hline
+\end{tabular}
+\end{table}
+A subset of background-only slices was included in segmentation training, whereas the validation and test sets retained background-only images for evaluation.
+
+The 2D artifact-classification population was further limited using reference-mask brain presence and the slice-index range 8--25. The recorded implementation considered foreground area relative to the maximum area within each dynamic and excluded slices with insufficient brain content. The resulting dataset was:
+\begin{table}[htbp]
+\centering
+\caption{Prepared 2D artifact-classification dataset by subject-based partition and inherited dynamic-level quality target.}
+\label{tab:method_2d_classification_inventory}
+\begin{tabular}{lrrr}
+\hline
+Partition & Good-labelled & Artifact-labelled & Total \\
+\hline
+Training & 4,996 & 1,082 & 6,078 \\
+Validation & 1,405 & 101 & 1,506 \\
+Test & 1,258 & 271 & 1,529 \\
+\hline
+Total & 7,659 & 1,454 & 9,113 \\
+\hline
+\end{tabular}
+\end{table}
+The selected slices retained their parent subject's partition assignment. The complete segmentation population and restricted classification population therefore represent different experimental analysis units and denominators.
+
+\subsection{Handling Class Imbalance and Uncertain Labels}
+
+Quality labels were available as Good (0), Artifact (1), and Uncertain ($-1$). Uncertain annotations were excluded from the construction of binary artifact-classification targets, rather than being assigned automatically to either class. Anatomical segmentation targets remained distinct from image-quality labels.
+
+The binary quality annotations referred to full dynamics. For a slice $s$ extracted from dynamic $d$, the inherited target was
+\begin{equation}
+\widetilde{y}_{d,s}=Y_d,
+\end{equation}
+where $Y_d$ is the observed dynamic-level quality label. This weak supervision does not prove that every slice from an artifact-labelled dynamic visibly exhibits an artifact. Evaluation against the inherited targets therefore does not amount to evaluation against independent slice-level expert annotations.
+
+The annotation inventory and the classification datasets were imbalanced towards Good observations. In the 2D classification partitions, artifact-labelled slices accounted for approximately 17.8\% of training data, 6.7\% of validation data, and 17.7\% of test data. This variation is important when interpreting precision, recall, and precision--recall measures.
+
+An early EfficientNet-B0 oracle-crop classification baseline used class-weighted cross-entropy, with documented weights of 1.0 for Good and 4.6174 for Artifact. These weights approximately reflect the inverse relative prevalence of the training classes. They are specific to the recorded baseline: the available evidence does not establish that every subsequent oracle- and predicted-crop classifier used this identical weighting configuration. Model-specific optimization and checkpoint selection are described in Section 4.6.
+
+Class imbalance and uncertainty in inherited targets are distinct issues. Weighting or sampling may modify the optimization contribution of minority-class examples but does not confirm that an inherited positive label corresponds to an artifact visible in an individual slice. For this reason, the subsequent evaluation reports class-sensitive metrics, identifies its observation unit, and distinguishes successful classifier predictions from missing inputs caused by segmentation or crop failure.
 
 \section{Initial Three-Dimensional Approaches}
 

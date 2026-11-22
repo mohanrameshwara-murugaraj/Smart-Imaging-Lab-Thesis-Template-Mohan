@@ -533,7 +533,7 @@ The available confusion matrices and model outputs did not establish case-specif
 
 The reliability of the two-dimensional region-of-interest (ROI) extraction stage was evaluated by examining whether predicted brain masks produced usable crops and whether those crops corresponded spatially to the reference fetal-brain regions. This evaluation distinguished technical crop-generation success from anatomical localization accuracy. The analysis used the saved crop metadata for the training, validation, and test partitions, with detailed error analysis performed on the 1,529-slice test population.
 
-\subsection{Crop Generation Success and Failure}
+\subsection{Predicted Brain-Crop Generation Success}
 \label{subsec:results_crop_success}
 
 Reference-mask-based oracle crops were available for all 9,113 selected classification slices. In contrast, predicted-mask-based cropping successfully produced 8,951 crops, while 162 slices did not yield a usable predicted crop. The overall predicted-crop availability was therefore 98.2\%.
@@ -568,7 +568,7 @@ The 30 failed test slices originated from two subjects: 22 from \texttt{mibirth0
 
 The substantially greater crop-failure frequency in artifact-positive dynamics is relevant to downstream artifact classification. Because predicted-crop classifier evaluation required a usable crop, the 28 failed slices from artifact-positive dynamics were excluded from its 1,499-slice test population. This exclusion altered the evaluated class distribution and means that classification metrics conditional on successful crop generation do not describe every selected test slice.
 
-\subsection{Segmentation Quality and Crop Reliability}
+\subsection{Segmentation Quality and Cropping Errors}
 \label{subsec:results_crop_quality}
 
 Technical crop-generation success was not equivalent to accurate fetal-brain localization. To examine this distinction, segmentation Dice scores were evaluated alongside predicted-crop availability.
@@ -601,7 +601,46 @@ The crop metadata also showed a difference between training, validation, and tes
 
 These findings demonstrate that ROI reliability requires assessment of both mask availability and segmentation overlap. A non-empty mask may allow the pipeline to continue while still producing a crop that poorly represents the fetal brain.
 
-\subsection{Qualitative Crop and Classification Failure Cases}
+\subsection{Oracle Versus Predicted Crop Classification}
+\label{subsec:results_matched_crops}
+
+To compare the two classifier variants under identical sample availability, the recovered matched evaluation file was used to restrict the analysis to 1,499 common slices. This subset comprised 1,256 good-labelled and 243 artifact-labelled slices.
+
+On this matched population, the oracle-crop classifier produced 1,142 true negatives, 114 false positives, 196 false negatives, and 47 true positives. The predicted-crop classifier produced 1,122 true negatives, 134 false positives, 186 false negatives, and 57 true positives. Table~\ref{tab:results_matched_oracle_predicted} summarizes the paired results.
+
+\begin{table}[htbp]
+\centering
+\caption{Classification performance of the oracle- and predicted-crop EfficientNet-B0 models on the same 1,499 test slices. Positive targets are inherited from dynamic-level quality labels. Average precision summarizes the precision--recall curve and is distinct from trapezoidal PR-AUC.}
+\label{tab:results_matched_oracle_predicted}
+\begin{tabular}{lrr}
+\hline
+Metric & Oracle crop & Predicted crop \\
+\hline
+Evaluated slices & 1,499 & 1,499 \\
+True negatives & 1,142 & 1,122 \\
+False positives & 114 & 134 \\
+False negatives & 196 & 186 \\
+True positives & 47 & 57 \\
+Accuracy & 79.3\% & 78.7\% \\
+Artifact sensitivity & 19.3\% & 23.5\% \\
+Specificity & 90.9\% & 89.3\% \\
+Precision & 29.2\% & 29.8\% \\
+F1-score & 23.3\% & 26.3\% \\
+ROC-AUC & 0.6440 & 0.6335 \\
+Average precision & 0.2656 & 0.2593 \\
+\hline
+\end{tabular}
+\end{table}
+
+The oracle-crop classifier achieved slightly higher accuracy, specificity, ROC-AUC, and average precision. In contrast, the predicted-crop classifier identified ten additional artifact-labelled slices, increasing sensitivity from 19.3\% to 23.5\%, but also generated 20 additional false-positive classifications.
+
+The matched results therefore did not establish uniform superiority of either crop strategy across all evaluation measures. Their relative performance depended on whether the emphasis was placed on correct classification of good-labelled slices, detection of artifact-labelled slices, or discrimination across thresholds.
+
+The ROC-AUC values of 0.6440 and 0.6335 indicate limited discrimination against the inherited slice-level targets. No statistical significance or confidence interval for the paired difference was established from the reported analysis, and the modest numerical difference should not be interpreted as a demonstrated advantage.
+
+Importantly, both classifiers were evaluated against weak labels derived from dynamic-level annotations. Furthermore, the matched analysis excluded the 30 slices for which automatic cropping failed. The missing-crop and low-overlap cases are described in Sections~\ref{subsec:results_crop_success} and~\ref{subsec:results_crop_quality}.
+
+\subsection{Qualitative Analysis of Incorrect Crops}
 \label{subsec:results_crop_qualitative}
 
 The selected MRI examples provide visual evidence of the distinction between successful segmentation, inaccurate localization, and complete crop failure. The revised qualitative panel contains original MRI slices, reference and predicted segmentation masks, and corresponding crop representations, with identifiers linking each example to its evaluation metadata.

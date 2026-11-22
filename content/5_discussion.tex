@@ -1,22 +1,118 @@
 \chapter{Discussion}
-% Approved headings; scientific interpretations must be drafted and checked against the primary evidence.
+
 \section{Interpretation of the Main Findings}
+\label{sec:discussion_main_findings}
+
+This thesis investigated complementary volumetric and slice-wise approaches to artifact detection in low-field fetal diffusion magnetic resonance imaging (dMRI). The experimental findings indicate that automated fetal-brain localization and quality classification can be connected in functional processing pipelines, but that successful operation of an individual model does not establish reliable quality assessment of an entire acquisition. The relevant distinctions are between segmentation overlap and anatomically useful crops, slice-level predictions and dynamic-level decisions, and retrospective computational feasibility and acquisition-time quality control.
+
+The developed 3D framework combined nnU-Net v2 segmentation, brain-centered volume extraction, and 3D ResNet classification. Its recovered 600-dynamic prediction export showed 93.5\% accuracy and 100\% Artifact sensitivity. These figures demonstrate agreement with the recorded annotations, not independently validated generalization: the executed checkpoint, training exposure, and subject-level evaluation independence of the export could not be fully established (Section~\ref{sec:results_3d_classification}). The volumetric representation retains relationships across slices and directly corresponds to the original dynamic-level quality labels, but the apparent performance advantage cannot be assigned to spatial context without a controlled, independent comparison.
+
+The 2D framework combined MobileNetV3-U-Net with EfficientNet-B0 to evaluate brain-centered individual slices. MobileNetV3-U-Net achieved a reported test Dice of 0.8620 on 3,168 slices from four held-out subjects, supporting its use as a fetal-brain localization component. The high typical overlap nevertheless concealed occasional empty or inaccurate masks, disproportionately observed among slices inherited from Artifact-labelled dynamics. Standalone EfficientNet-B0 classification was much less sensitive to inherited positive labels: 26.2\% on the complete oracle-crop test set and 23.5\% on the successful predicted-crop subset. Because even reference-mask-assisted cropping yielded limited sensitivity, localization failures cannot alone explain the difficulty of the slice-classification task. The dynamic-to-slice transfer of quality labels is a further important source of uncertainty.
+
+An additional finding concerned the information used to reach dynamic-level decisions. On 88 test dynamics, the original 2D decision rule achieved 16.7\% Artifact sensitivity; a balanced failure-aware rule reached 66.7\% while retaining 94.3\% specificity. Most positive detections under the latter rule arose from unavailable predicted brain crops rather than classifier-score triggers (Section~\ref{sec:results_dynamic_decisions}). This suggests that segmentation outcomes can contribute to retrospective quality assessment, although crop failure is not itself proof of a visible artifact and the small validation population limits confidence in threshold stability.
+
+The matched 71-dynamic comparison showed distinct error patterns: the recorded 3D predictions were more sensitive to Artifact-labelled acquisitions, whereas the 2D failure-aware decisions produced fewer false positives. The four-subject sample, unresolved 3D training exposure, and differences in the decision mechanisms prevent a definitive ranking of model generalization. Likewise, millisecond-scale offline 2D inference is promising for processing individual images, but does not establish scanner-integrated real-time detection, measured early stopping, or a controlled end-to-end speed advantage. Together, these findings establish the principal research contribution as a critical assessment of the capabilities, dependencies, and evidential boundaries of two implemented quality-assessment approaches rather than a validated clinical deployment.
+
 \section{Three-Dimensional Artifact-Detection Pipeline}
+\label{sec:discussion_3d}
+
 \subsection{Strengths of Volumetric Analysis}
+\label{subsec:discussion_3d_strengths}
+
+The central architectural strength of the developed 3D pipeline is its representation of a complete diffusion dynamic. Three-dimensional convolutions can describe features extending through neighbouring image planes, whereas a classifier receiving an isolated 2D crop cannot directly evaluate such relationships. This distinction is potentially important where degradation manifests as spatially distributed signal changes or inconsistencies across the imaged brain. It is a plausible benefit of volumetric analysis, however, rather than a causal effect established by the present experiments.
+
+The combination of nnU-Net v2 localization and brain-centered cropping also provided an anatomically focused route to quality classification. The segmentation component was designed to restrict the downstream ResNet input to the fetal-brain region while preserving original MRI intensities within the extracted bounding box. This modular structure distinguishes anatomical localization from quality assessment and allows each stage to be inspected separately. No controlled full-field-versus-brain-crop ablation was recovered, so the magnitude of any classification benefit from region-of-interest extraction remains unknown.
+
+A further advantage is the correspondence between annotation and prediction unit. Original Good and Artifact labels were attached to complete diffusion dynamics, and the 3D ResNet likewise produced one decision per dynamic. Unlike the slice-wise classifier, it did not need to assign an identical dynamic label to individual images or aggregate independently estimated slice scores. This alignment avoids one particular weak-supervision mismatch, without eliminating uncertainty in the underlying expert quality annotations.
+
+The recovered 3D classification export and matched evaluation provide evidence that the implemented volumetric classifier can produce discriminative dynamic-level decisions on the available records. In the 600-record export, all 92 Artifact-labelled dynamics were identified, alongside 39 false-positive decisions on Good-labelled dynamics. The latter errors demonstrate that a highly sensitive operating point can still impose a cost in unnecessary quality alerts. Interpretation of both outcomes must remain conditional on the unknown overlap with model development data; the export is not evidence of perfect detection on unseen fetuses.
+
 \subsection{Limitations of the 3D Approach}
+\label{subsec:discussion_3d_limitations}
+
+The most consequential limitation of the 3D evidence is incomplete evaluation independence. The documented nnU-Net allocation contained subjects represented in both training and test entries, and the 3D ResNet implementation partitioned dynamic records without explicit grouping by subject. Repeated dynamics from one fetus share anatomical and acquisition-related characteristics; placing them across partitions can yield overly optimistic performance estimates. The executed classifier checkpoint and its relation to all 600 exported predictions were not fully recovered, so the recorded confusion matrix must not be interpreted as independently held-out performance.
+
+The segmentation stage presents a separate limitation. Conventional volumetric cropping requires a usable foreground mask; an empty mask prevents ordinary crop construction, whereas a nonempty but incorrectly localized mask may produce a misleading classifier input. Aggregate, matched held-out nnU-Net segmentation metrics and a complete candidate-to-prediction processing log were unavailable. Accordingly, the number of exported ResNet predictions does not establish the success rate or accuracy of the full segmentation-to-classification pipeline. Failures observed with the earlier custom 3D U-Net cannot be used as quantitative failure estimates for the later nnU-Net model.
+
+In the recorded 3D predictions, false-positive Artifact classifications affected Good-labelled dynamics, while no false negatives appeared in the recovered export. Such an error distribution could lead to unnecessary review or reacquisition if the same decision behaviour persisted in practice. Because matched original images, segmentation outputs, crops, and classification errors were not consistently available, the causes of these false positives cannot be reliably assigned to motion, anatomy, or localization error.
+
+A final limitation concerns decision timing. The 3D pipeline requires a completed reconstructed volume before standard segmentation, crop extraction, and classification. Historical offline processing reports described approximately 15--25 seconds per scan and 17--20 seconds per volume, identifying volumetric segmentation as an important computational component. Their hardware and timing boundaries were not verified as equivalent, and a separate 5.901\,ms prepared-crop ResNet benchmark omitted segmentation and initial crop construction. These measurements therefore do not yield one reproducible end-to-end latency. The folder-watching and Streamlit demonstrations established post-file-availability automation, not analysis of a live scanner stream or automatic interruption and reacquisition. These constraints motivated investigation of a slice-wise alternative without implying that dimensionality alone resolves all pipeline failures.
+
 \section{Two-Dimensional Artifact-Detection Pipeline}
+\label{sec:discussion_2d}
+
 \subsection{Strengths of Slice-Wise Processing}
+\label{subsec:discussion_2d_strengths}
+
+The 2D framework replaced the complete-volume prediction unit with a sequence of independently processed slices. MobileNetV3-U-Net performed fetal-brain localization, and EfficientNet-B0 classified a 224-by-224 brain-centered crop when a usable predicted mask was available. This reduced the image extent required for each inference operation and permitted the research to examine decisions based on selected slices rather than always waiting for a complete volumetric classifier input.
+
+The segmentation network, with approximately 6.69 million parameters, reached substantial overlap on the subject-separated test population. Its recorded batch-size-one inference means of 2.748 and 2.759\,ms per slice demonstrated low model inference cost under the evaluated GPU configuration. A separate stage-specific report gave approximately 5.239\,ms for successful-slice preprocessing, segmentation, cropping, and classification. These measurements are not interchangeable and their minor numerical differences remain unresolved; nevertheless, they support the feasibility of computationally inexpensive offline slice processing.
+
+The modular architecture also enabled an informative distinction between reference-mask-assisted (oracle) crops and automatically generated crops, and between a classifier decision and the absence of a classifier input. The 2D segmentation and classification partitions used disjoint recorded subject identifiers, reducing the specific leakage risk observed in the earlier 3D data allocation. The small number of independent test subjects still limits generalization claims, but the subject-based partition is a methodological strength of the later experimental design.
+
 \subsection{Segmentation and Classification Challenges}
+\label{subsec:discussion_2d_challenges}
+
+Strong average segmentation overlap did not guarantee reliable localization in every slice. Across brain-present test slices, mean Dice was 0.9106 but median Dice was 0.9700, indicating a tail of poorer outcomes. Within the 1,529-slice classification test population, mean Dice was 0.9511 for slices from Good-labelled dynamics and 0.8081 for those from Artifact-labelled dynamics. The corresponding crop-failure counts were two of 1,258 and 28 of 271, respectively (Section~\ref{subsec:results_2d_segmentation_subgroups}). The concentration of failures among Artifact-labelled acquisitions is relevant, but those observations were clustered within a few subjects and do not identify visible artifact mechanisms in individual slices.
+
+Two distinct failures matter downstream: an empty mask yields no classifier crop, while an anatomically inaccurate nonempty mask can still generate an input. The latter condition was observed in 21 of the 1,499 successful predicted crops with Dice below 0.5. Consequently, the reported 98.2\% overall predicted-crop availability does not mean that 98.2\% of crops were anatomically reliable (Section~\ref{sec:results_roi_reliability}). Dice can support retrospective analysis of such failures but cannot be used as a live acceptance criterion when reference masks are unavailable.
+
+The EfficientNet-B0 results further show that crop reliability is not the entire problem. The complete oracle-crop test contained 200 false negatives against 271 inherited positive slice labels, despite using reference-mask-assisted inputs. The predicted-crop classifier also had limited sensitivity on its successful-input subset. Training loss decreased while validation loss increased in both recorded variants, a pattern consistent with limited generalization, although the precise contributions of overfitting, class imbalance, loss optimization, and label quality were not isolated. Since the two crop variants were trained separately and one excluded missing crops, differences in their metrics cannot be attributed solely to segmentation accuracy. Section~\ref{sec:discussion_segmentation_influence} examines that dependency specifically.
+
 \subsection{Influence of Weak Slice-Level Labels}
+\label{subsec:discussion_2d_weak_labels}
+
+The 2D classification objective inherited Good or Artifact labels from complete diffusion dynamics. This made supervised slice training possible with the available annotations but did not establish that every selected slice from an Artifact-labelled dynamic visibly contained corruption. A model may therefore be penalized for classifying an apparently unaffected slice as Good, even if its prediction is anatomically plausible. Conversely, agreement with an inherited label does not independently demonstrate detection of a visible slice artifact.
+
+This granularity mismatch limits the interpretation of the confusion matrices. An observed false negative against the inherited target cannot automatically be described as a missed visually confirmed artifact. Label noise is a credible contributor to the difficulty of training and evaluating EfficientNet-B0, but the present evidence does not quantify how many slice targets are incorrect or establish that weak supervision caused the observed sensitivity. Limited 2D spatial context and other model-development factors remain alternative explanations.
+
+The class distribution further complicated model selection: positive inherited labels accounted for approximately 17.8\% of training slices, 6.7\% of validation slices, and 17.7\% of test slices. Such shifts affect prevalence-sensitive metrics and make a small positive validation set especially consequential for precision--recall-oriented checkpoint and threshold selection. A manually reviewed slice-level subset would allow visible corruption to be distinguished from an affected parent dynamic and would support a more direct evaluation of slice recognition. That additional annotation experiment was not completed in the documented study and is therefore future work rather than an achieved validation result.
+
 \section{Comparison of Volumetric and Slice-Wise Approaches}
+\label{sec:discussion_3d_2d_comparison}
+
 \subsection{Spatial Context and Artifact Detection}
+\label{subsec:discussion_comparison_context}
+
+The 3D and 2D frameworks differ both in the anatomical information provided to their classifiers and in the way a dynamic-level decision is produced. The 3D ResNet operates on a brain-centered volume and predicts a quality class directly; the 2D EfficientNet-B0 operates on slices and requires subsequent aggregation or a failure-aware decision policy. The advantage of volumetric spatial context is therefore coupled in this study to differences in models, supervision, preprocessing, and decision rules.
+
+The matched evaluation restricted the comparison to the same 71 dynamics from four subjects, with 59 Good and 12 Artifact annotations. This removes differences in evaluated dynamic identities, but not differences in model-training independence or the prediction mechanisms themselves. The 3D predictions identified all 12 positive dynamics; the 2D failure-aware configuration identified six. These observations are consistent with a possible benefit of volumetric context, but cannot be used to isolate it as the explanation (Section~\ref{sec:results_3d_vs_2d}).
+
+The recorded correctness pattern also differed: both systems were correct on 52 dynamics, only 3D was correct on ten, only 2D was correct on nine, and neither was wrong on the same dynamic in that file. This shows nonidentical errors in the recovered predictions, not the performance of a tested hybrid or ensemble. In particular, it would be invalid to infer that combining the systems would provide error-free detection on independent acquisitions.
+
 \subsection{Classification Reliability and Error Trade-offs}
+\label{subsec:discussion_comparison_errors}
+
+The matched accuracies were close: 87.3\% for 3D and 85.9\% for 2D, or 62 versus 61 correct dynamics. This one-observation difference in accuracy concealed a much larger divergence in error type. The 3D export yielded no false negatives and nine false positives; the 2D failure-aware decisions yielded six false negatives and four false positives. Corresponding Artifact sensitivities were 100.0\% and 50.0\%, while specificities were 84.7\% and 93.2\%, respectively.
+
+These trade-offs matter because missed corrupted acquisitions may permit unsuitable data to proceed, whereas false alarms may lead to unnecessary review or reacquisition. The appropriate operating point depends on costs not measured in the present study. Accuracy alone is therefore inadequate for selecting a quality-control system under class imbalance. Moreover, the 2D result is for a composite failure-aware policy: five of its six true-positive decisions in the matched cohort were attributed to missing-crop triggers. It is not a head-to-head classifier-only comparison against the ResNet.
+
+The matched cohort contained only 12 positive dynamics and four independent subjects, so subject clustering and small changes in error counts substantially affect estimated sensitivity. Neither subject-clustered uncertainty estimates nor formal paired significance tests were established. Most importantly, the evaluated 3D predictions belong to an export whose training exposure remains unresolved, and the precise frozen-rule provenance of the 2D matched decisions is not fully recoverable. The matched analysis is therefore exploratory and does not establish a reliable generalization ranking.
+
 \subsection{Computational Requirements and Early Feedback}
+\label{subsec:discussion_comparison_runtime}
+
+A meaningful computational comparison must account for both the processing boundary and the point at which image data become available. The standard 3D pipeline requires a reconstructed complete dynamic and its segmentation-derived crop before ResNet classification. The 2D pipeline processes individual slices and can, in principle, accumulate evidence incrementally, although a dependable dynamic decision still requires an appropriate aggregation or stopping policy.
+
+The available timings cover different quantities: historical complete-volume workflows of approximately 15--25 and 17--20 seconds, prepared-crop 3D classification of 5.901\,ms per volume, dedicated 2D segmentation inference of approximately 2.75\,ms per slice, and a reported successful-slice 2D processing time of 5.239\,ms. The prepared-volume benchmark omits nnU-Net and cropping, whereas the successful-slice 2D figure includes multiple processing stages; the historical experiments lack verified identical conditions. Consequently, no defensible end-to-end 3D-to-2D speedup factor follows from these values (Section~\ref{sec:results_computational_performance}).
+
+The more relevant potential distinction is early access to a decision. Slice-wise processing need not wait for a completed volumetric classifier input. The recorded sequential demonstration implemented ordered inference and first-trigger logic on reconstructed NIfTI images, but did not establish the distribution of first detections, independent prospective sequential sensitivity, or measured acquisition-time savings. Computation alone also omits reconstruction, data transfer, scanner interface, and communication with an acquisition controller. Accordingly, low offline slice latency supports further engineering investigation, not a claim of demonstrated real-time scanner intervention. Speed and decision reliability must be evaluated jointly: an early but inaccurate alert is not an effective quality-control outcome.
+
 \section{Influence of Brain Segmentation on Artifact Classification}
+\label{sec:discussion_segmentation_influence}
+
 \section{Dynamic-Level Decision Strategies and Failure Handling}
+\label{sec:discussion_dynamic_decisions}
+
 \section{Methodological Limitations}
+\label{sec:discussion_limitations}
+
 \subsection{Dataset Size and Generalization}
+
 \subsection{Annotation Quality and Label Uncertainty}
+
 \subsection{Experimental Comparability and Evaluation Independence}
+
 \subsection{Limitations of Computational and Real-Time Evaluation}
+
 \section{Implications for Automated Fetal MRI Quality Control}

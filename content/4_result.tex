@@ -1058,18 +1058,48 @@ Therefore, the findings support low computational cost for offline successful-sl
 \section{Summary of Experimental Findings}
 \label{sec:results_summary}
 
-The findings can be summarized in terms of volumetric classification, slice-wise localization and classification, dynamic-level decisions, and computational feasibility. The distinct evaluation populations and provenance limitations described throughout this chapter remain essential to their interpretation.
+This chapter presented experimental results from preliminary volumetric segmentation and handcrafted-feature classification, a developed nnU-Net v2 and 3D ResNet workflow, and the 2D MobileNetV3-U-Net and EfficientNet-B0 pipeline. Segmentation, crop availability, slice classification, dynamic-level decisions, and computational timing were evaluated on distinct populations. Their different prediction units, label definitions, and evaluation independence must be retained when interpreting the findings.
 
-The 3D experiments demonstrated the development of a volumetric segmentation-to-classification workflow. The recovered ResNet prediction export contained 600 dynamics and yielded an accuracy of 93.5\%, artifact sensitivity of 100.0\%, and specificity of 92.3\%. However, the independence of these predictions from model training could not be established. Similarly, although the nnU-Net segmentation stage was used to prepare volumetric classifier inputs, independently verified held-out segmentation overlap metrics were unavailable. The 3D findings therefore document the recorded pipeline behavior without establishing its generalization performance on previously unseen subjects.
+\paragraph{Preliminary 3D experiments.}
+The custom 3D U-Net reached training Dice 0.9656 after 25 epochs, but no independently verified test segmentation performance was established. A small inference inspection identified empty-mask failures. The handcrafted-feature Random Forest experiment used only four feature records with incorrect subject-to-annotation matching, preventing scientifically valid classifier generalization claims.
 
-The 2D segmentation test achieved a Dice coefficient of 0.8620 and an IoU of 0.8339. The ROI analysis additionally showed that successful crop generation and accurate anatomical localization were distinct outcomes: some masks failed to produce a crop, while others yielded a crop despite poor overlap.
+\paragraph{Developed volumetric pipeline.}
+The recorded 3D ResNet prediction export comprised 600 dynamics (508 Good and 92 Artifact) with 93.5\% classification accuracy, 100.0\% Artifact sensitivity, 92.3\% specificity, and 82.5\% F1-score. These describe agreement in the saved export; independence from model training and selection could not be confirmed. Verified aggregate held-out nnU-Net segmentation overlap metrics were unavailable, and a complete candidate-to-prediction execution log was not recovered.
 
-The EfficientNet-B0 classification experiments showed limited discrimination against weak slice-level artifact labels. On the matched population of 1,499 slices, the oracle- and predicted-crop classifiers achieved ROC-AUC values of 0.6440 and 0.6335, respectively. Artifact sensitivities were 19.3\% and 23.5\%. Neither crop strategy consistently outperformed the other across all classification metrics. These results also demonstrated that successful brain segmentation and cropping did not necessarily translate into reliable identification of inherited artifact-positive targets.
+\paragraph{2D segmentation and crop reliability.}
+The MobileNetV3-U-Net achieved maximum recorded validation Dice 0.8749 and test Dice 0.8620 on 3,168 slices, with test IoU 0.8339, foreground sensitivity 0.9063, and specificity 0.9989. In the restricted 1,529-slice classification test cohort, mean Dice differed by inherited quality label (Good 0.9511; Artifact 0.8081). Of 9,113 selected classifier slices, 8,951 (98.2\%) yielded predicted crops. In the selected test cohort, 30 slices had no valid predicted crop and a further 21 generated crops despite segmentation Dice below 0.5. Technical crop availability was therefore distinct from reliable anatomical localization.
 
-In the 88-dynamic test population, failure-aware decision-making improved artifact sensitivity relative to the original aggregation rule without increasing false positives for the balanced configuration. The small positive validation cohort and unresolved execution provenance restrict claims about the stability of that selected operating point.
+\paragraph{2D slice classification.}
+The complete oracle-crop test cohort of 1,529 slices yielded 79.5\% accuracy, 26.2\% Artifact sensitivity, and ROC-AUC 0.6742. The 1,499 successful predicted-crop inputs yielded 78.7\% accuracy, 23.5\% sensitivity, and ROC-AUC 0.6335. On the matched 1,499-slice subset, oracle and predicted-crop sensitivities were 19.3\% and 23.5\%, with ROC-AUC 0.6440 and 0.6335, respectively. The separately trained crop variants did not show uniform superiority, and classification targets were inherited from dynamic-quality annotations rather than verified visible artifacts in every slice.
 
-The matched 71-dynamic comparison revealed different error patterns between the pipelines; however, uncertainty about 3D training--evaluation independence prevents a definitive generalization ranking.
+\paragraph{Dynamic-level quality decisions.}
+On 88 test dynamics, the original aggregation decision had 78.4\% accuracy, 16.7\% Artifact sensitivity, and 94.3\% specificity. A balanced failure-aware rule achieved 88.6\% accuracy, 66.7\% Artifact sensitivity, 94.3\% specificity, and 70.6\% F1-score. It identified nine more Artifact-labelled dynamics without adding false positives. Ten of its 12 true-positive decisions were attributed to missing-crop triggers, not classifier-score triggers. Its threshold search used only six positive validation dynamics, limiting confidence in stability on new acquisitions.
 
-The computational results show promising slice-level processing times, but heterogeneous timing scopes prevent a verified end-to-end speed comparison. Neither prospective scanner integration nor acquisition-time early stopping was demonstrated.
+\paragraph{Matched 3D--2D comparison.}
+The separate 71-dynamic cohort yielded 87.3\% accuracy and 100.0\% Artifact sensitivity for 3D, versus 85.9\% accuracy and 50.0\% sensitivity for 2D; specificities were 84.7\% and 93.2\%, respectively. The recovered methods had different error patterns: 52 dynamics were correctly classified by both, ten only by 3D, and nine only by 2D, with none incorrectly classified by both in that file. The limited four-subject population and unresolved 3D checkpoint exposure prevent a definitive generalization ranking.
 
-Overall, the experiments established the feasibility of constructing both volumetric and slice-wise fetal dMRI artifact-assessment workflows and identified important differences in their observed behavior. The principal findings were the dependence of 2D segmentation reliability on image-quality conditions, the limitations of classification using inherited dynamic-level labels, and the substantial influence of failure-aware decision rules on dynamic-level artifact detection. The available results support further investigation of automated fetal dMRI quality control, while independent subject-level validation, consistent end-to-end timing, and prospective scanner-based evaluation remain necessary to establish operational reliability.
+\paragraph{Computational feasibility.}
+The recorded 2D successful-slice processing time was 5.239\,ms, with dedicated batch-size-one segmentation inference around 2.75\,ms. Prepared-crop 3D ResNet classification took 5.901\,ms per volume, excluding nnU-Net. Historical full-volume 3D workflows were reported at approximately 15--25 seconds per scan and 17--20 seconds per volume. Differing scopes prevent a verified end-to-end speedup calculation. The sequential 2D demonstration implemented logical first-trigger stopping on reconstructed images but lacked verified early-trigger distributions, measured latency reduction, and prospective scanner integration.
+
+\begin{table}[htbp]
+\centering
+\caption{Principal experimental results and their evaluation populations. Values with unresolved evaluation independence are not presented as held-out generalization estimates.}
+\label{tab:results_summary_overview}
+\begin{tabular}{p{0.28\textwidth}p{0.28\textwidth}p{0.30\textwidth}}
+\hline
+Experiment & Principal observation & Population or limitation \\
+\hline
+Custom 3D U-Net & Training Dice 0.9656 & Training only; no verified independent test \\
+3D ResNet & Accuracy 93.5\% & 600 exported dynamics; training overlap unresolved \\
+2D segmentation & Test Dice 0.8620 & 3,168 slices \\
+Predicted crop availability & 98.2\% & 8,951 of 9,113 selected slices \\
+Oracle 2D classification & Artifact recall 26.2\% & 1,529 test slices \\
+Predicted 2D classification & Artifact recall 23.5\% & 1,499 usable test slices \\
+Balanced failure-aware QC & Artifact recall 66.7\% & 88 test dynamics \\
+Matched 3D versus 2D & Accuracy 87.3\% vs.\ 85.9\% & 71 dynamics; 3D evaluation exposure unresolved \\
+2D successful-slice timing & 5.239\,ms/slice & Reported offline stage benchmark \\
+\hline
+\end{tabular}
+\end{table}
+
+Overall, the experiments establish implemented volumetric and slice-wise fetal dMRI quality-assessment workflows, substantial subject-separated 2D segmentation performance, limited slice-level agreement with dynamic-inherited artifact labels, and materially different retrospective dynamic decisions when segmentation failures are included. They do not establish independent-subject generalization for the recovered 3D export, a controlled complete 3D--2D speed ranking, or scanner-integrated real-time artifact detection. These evidential boundaries provide the basis for the interpretation and limitations discussed in the next chapter.

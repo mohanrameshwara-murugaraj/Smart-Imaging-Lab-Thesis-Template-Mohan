@@ -662,7 +662,7 @@ The two-dimensional artifact-classification framework generated predictions for 
 
 The recovered results included individual predictions for 88 test dynamics and a separate validation-based search over aggregation methods and decision thresholds. These experiments are presented separately from the matched 71-dynamic 3D-versus-2D comparison described in Section~\ref{sec:results_3d_vs_2d}.
 
-\subsection{Dynamic-Level Aggregation Performance}
+\subsection{Slice-Probability Aggregation Results}
 \label{subsec:results_dynamic_aggregation}
 
 The dynamic-level test evaluation comprised 88 diffusion dynamics from four held-out subjects. Of these, 70 were annotated as good quality and 18 as artifact-positive. Slice-level artifact probabilities were combined to obtain one score or decision per dynamic.
@@ -698,7 +698,30 @@ An additional validation-based threshold search examined mean, median, maximum, 
 % FIGURE PENDING: R07 original 88-dynamic confusion matrix and/or R06 score distribution.
 % Source figures require insertion and scientific captions.
 
-\subsection{Failure-Aware Decision Policies}
+\subsection{Classification Threshold Evaluation}
+\label{subsec:results_dynamic_thresholds}
+
+The recovered validation-based search comprised 86 dynamics, including 80 Good and six Artifact labels. Candidate operating rules combined slice-score aggregation, probability thresholding, and optional failed-crop criteria. The selected balanced setting used median aggregation, threshold 0.93, and a trigger of at least one unavailable crop. A second recall-oriented setting used a mean of the five highest available slice scores, threshold 0.98, and the same one-crop trigger.
+
+\begin{table}[htbp]
+\centering
+\caption{Selected validation-based dynamic-level operating configurations. The thresholds apply to aggregated dynamic-level scores, not individual slice scores.}
+\label{tab:results_threshold_configs}
+\begin{tabular}{lrrr}
+\hline
+Policy & Aggregation & Probability threshold & Failure threshold \\
+\hline
+Balanced & Median & 0.93 & 1 \\
+Recall-oriented & Top-five mean & 0.98 & 1 \\
+\hline
+\end{tabular}
+\end{table}
+
+The balanced configuration was selected by maximizing validation F1-score, with recall, specificity, and precision as tie-breakers. The recall-oriented configuration prioritized validation recall among settings satisfying minimum specificity 0.85. In the 86-dynamic validation population, the balanced policy produced $TN=78$, $FP=2$, $FN=2$, and $TP=4$, corresponding to 95.3\% accuracy, 66.7\% Artifact sensitivity, 97.5\% specificity, 66.7\% precision, and 66.7\% F1-score.
+
+These values are sensitive to the small validation positive class: one of six Artifact observations corresponds to 16.7 percentage points of recall. The search was documented as validation based, but the recovered history did not independently establish that every later test output was generated without repeated test inspection or manual rule adjustment. Thus, the thresholds are recorded experimental operating points, not proven optimal policies for independent future acquisitions.
+
+\subsection{Segmentation-Failure-Aware Decision Results}
 \label{subsec:results_failure_aware_policies}
 
 To incorporate failures occurring before classification, an additional decision framework combined the aggregated artifact score with the number of slices for which a predicted crop was unavailable.
@@ -706,12 +729,6 @@ To incorporate failures occurring before classification, an additional decision 
 The recovered implementation assigned an artifact-positive dynamic decision if either the aggregated classifier score met or exceeded its configured threshold or the number of failed slice crops reached a specified failure threshold. The failure indicator was based on crop or classifier availability, rather than on segmentation Dice, which would require reference brain masks unavailable during deployment.
 
 Two configurations were retained in the experiment: a balanced configuration and a recall-oriented configuration.
-
-The balanced configuration used median aggregation, a probability threshold of 0.93, and a failure threshold of one unavailable crop. The recorded script selected this configuration by maximizing validation F1-score, with recall, specificity, and precision used as tie-breaking criteria.
-
-The recall-oriented configuration used the mean of the five highest available slice probabilities, a probability threshold of 0.98, and the same one-crop failure threshold. Its documented selection procedure prioritized validation recall among configurations satisfying a minimum specificity of 0.85.
-
-The validation dataset contained 86 dynamics, including 80 good-quality and six artifact-positive observations. The selected balanced configuration achieved four true positives, two false negatives, two false positives, and 78 true negatives on that validation population, corresponding to an F1-score of 66.7\%.
 
 When evaluated on the separate 88-dynamic test population, the balanced configuration correctly identified 12 of the 18 artifact-positive dynamics and 66 of the 70 good-quality dynamics. The corresponding sensitivity was 66.7\%, specificity was 94.3\%, precision was 75.0\%, F1-score was 70.6\%, and accuracy was 88.6\%.
 
@@ -755,16 +772,42 @@ The recovered script documents a validation-based parameter search followed by a
 
 The balanced policy therefore represents the strongest recorded operating point among the three evaluated decision rules on this test population, but the observed improvement should not be interpreted as definitive evidence of generalization to independent future acquisitions.
 
-\subsection{Sequential Decision Experiments}
+\subsection{Sequential Quality-Control Experiments}
 \label{subsec:results_sequential_status}
 
 The broader research objective considered the possibility of examining slices sequentially and identifying artifact-positive dynamics before all slices had been processed. Such an approach would require an ordered sequence of slice-level inference results, a defined stopping condition, and a measurable first-decision position.
 
-The recovered evidence established retrospective slice-to-dynamic aggregation and the application of failure-aware policies after the available slice predictions had been assembled. However, it did not provide a verified experiment documenting first-trigger slice indices, decisions made using only the preceding slices, or measured processing time saved through early stopping.
+The recovered implementation also demonstrated sequential processing of ordered slices from reconstructed NIfTI inputs. Its documented default examined slice indices 8--25, inclusive, with a slice-level score threshold initialized at 0.92 and optional stopping on segmentation or crop failure. This slice-level stopping threshold was distinct from the retrospective dynamic-level thresholds. The retrospective results were obtained after grouping available slice outputs; the sequential demonstration did not establish equivalent prospective decision performance. However, it did not provide a verified experiment documenting first-trigger slice indices, decisions made using only the preceding slices, or measured processing time saved through early stopping.
 
 Consequently, no quantitative sequential detection rate, number of processed slices before stopping, or latency reduction attributable to an early-decision rule can be reported from the available evidence.
 
 The recorded dynamic-level results therefore characterize retrospective quality decisions rather than verified prospective or acquisition-time early stopping. The computational implications of processing individual slices are examined separately in Section~\ref{sec:results_computational_performance}, without assuming that retrospective aggregation demonstrates scanner-integrated real-time intervention.
+
+\subsection{Sensitivity and Specificity Trade-offs}
+\label{subsec:results_dynamic_tradeoffs}
+
+On the common 88-dynamic test cohort, the original rule achieved 16.7\% Artifact sensitivity and 94.3\% specificity. The balanced failure-aware policy increased sensitivity to 66.7\% while retaining specificity of 94.3\%, detecting nine additional Artifact-labelled dynamics with no additional false-positive decisions. The recall-oriented policy produced the same 66.7\% sensitivity but reduced specificity to 85.7\%, generating six more false positives than the balanced policy.
+
+\begin{table}[htbp]
+\centering
+\caption{Observed Artifact-detection trade-offs on the 88-dynamic test population (70 Good, 18 Artifact).}
+\label{tab:results_dynamic_tradeoffs}
+\begin{tabular}{lrrrr}
+\hline
+Policy & Sensitivity & Specificity & False negatives & False positives \\
+\hline
+Original & 16.7\% & 94.3\% & 15 & 4 \\
+Balanced & 66.7\% & 94.3\% & 6 & 4 \\
+Recall-oriented & 66.7\% & 85.7\% & 6 & 10 \\
+\hline
+\end{tabular}
+\end{table}
+
+The balanced policy was the strongest of these three recorded operating points under the reported metrics. Nevertheless, ten of its 12 true-positive outcomes were attributed to failed-crop triggers rather than a classifier-score threshold, so the improvement cannot be described as improved standalone EfficientNet-B0 Artifact sensitivity. A failure signal indicates missing anatomical localization, not independently verified visible corruption.
+
+The evaluation involved only four test subjects and an operating-point search with six positive validation dynamics; acquisitions within subjects were not independent biological observations. No subject-clustered interval, independently frozen threshold protocol, or prospective validation was established. False positives may cause unnecessary review or future reacquisition, while false negatives may permit unsuitable acquisitions to pass. Without quantified operational costs and independent validation, the balanced setting is a favorable observed retrospective configuration, not an established clinically optimal policy.
+
+The sequential demo supports logical first-trigger stopping on completed files only; it does not substantiate earlier scanner-time quality detection or measured latency savings. The distinct matched 71-dynamic 3D--2D comparison is reported in Section~\ref{sec:results_3d_vs_2d}.
 
 \section{Matched Comparison of 3D and 2D Pipelines}
 \label{sec:results_3d_vs_2d}

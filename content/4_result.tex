@@ -10,7 +10,6 @@ The experimental evaluation used several populations derived from the available 
 
 The source quality-annotation inventory comprised 38 case--sequence records, with 22 dynamic annotation positions per record. The resulting 836 entries were categorized as Good (0), Artifact (1), or Uncertain ($-1$). Table~\ref{tab:original_dynamic_annotation_counts} presents their distribution.
 
-
 Good-quality entries predominated, while Artifact represented a minority of annotations. Exclusion of 66 Uncertain entries left 770 known-label annotation entries potentially eligible for binary artifact-classification targets. This label count does not independently establish the availability of 770 matched MRI volumes and brain masks, since later experiments additionally required usable image files, mask correspondence, and task-specific eligibility.
 
 The original labels were assigned to complete diffusion dynamics rather than individual slices. The 2D classification targets were consequently inherited from the parent dynamics, constituting weak slice-level labels. Such labels quantify agreement with acquisition-quality annotations, not independently verified visible artifacts in each individual slice. The imbalance of the available labels provides context for the class-sensitive classification results reported later in this chapter.
@@ -26,12 +25,10 @@ The recovered downstream 3D ResNet classifier dataset contained 600 dynamic-leve
 \paragraph{Two-dimensional segmentation population.}
 The developed 2D framework used a recorded subject-level allocation of 24 groups: 16 for training, four for validation, and four for testing. The segmentation population included both brain-present and background-only slices. Table~\ref{tab:method_2d_segmentation_inventory} summarizes the prepared inventories.
 
-
 The segmentation test population consequently included 3,168 slices from four held-out subjects, comprising 1,902 images with reference fetal-brain foreground and 1,266 images without reference foreground. This distinction is important when interpreting segmentation overlap and empty-mask outcomes.
 
 \paragraph{Two-dimensional artifact-classification population.}
 The classification dataset applied additional brain-content and slice-index selection, resulting in 9,113 selected slices from the 24 subject groups. Table~\ref{tab:method_2d_classification_inventory} gives the recorded class composition and subject allocations.
-
 
 The proportion of Artifact-labelled slices was approximately 17.8\% in training, 6.7\% in validation, and 17.7\% in testing. These differing prevalences are relevant when interpreting precision, average precision, and other prevalence-sensitive measures. The recovered classification metadata confirmed disjoint subject identifiers across the three partitions, although the original split-generation procedure and complete identifier mapping were not independently verified in every historical record.
 
@@ -291,7 +288,6 @@ Both interfaces accepted complete files already available for processing. Neithe
 \label{subsec:results_3d_workflow_timing}
 
 Historical development reports identified volumetric segmentation as a major contributor to processing time. The June 2026 supervisor update described approximately 15--25 seconds per scan for an earlier offline volumetric workflow; a September 2026 presentation separately described approximately 17--20 seconds per volume. A different September benchmark reported 5.901 milliseconds per volume for prepared-crop 3D ResNet classification, excluding nnU-Net segmentation and original brain cropping. Table~\ref{tab:results_3d_timing} preserves their different measurement scopes.
-
 
 The time difference illustrates why prepared-crop classifier inference cannot represent complete volumetric processing latency. Nevertheless, the historical reports did not establish identical hardware, model versions, input dimensions, or timing boundaries. Their values were not pooled into a final end-to-end estimate. A full event-level distribution would require consistent measurement from file availability through loading, segmentation, crop extraction, classification, and output logging, which was not recovered. Further computational analysis is presented in Section~\ref{sec:results_computational_performance}.
 
@@ -636,25 +632,7 @@ The dynamic-level test evaluation comprised 88 diffusion dynamics from four held
 
 The original recorded dynamic-level decision rule correctly classified 66 of the 70 good-quality dynamics and three of the 18 artifact-positive dynamics. The remaining predictions comprised four false positives and 15 false negatives. The resulting accuracy was 78.4\%, artifact sensitivity was 16.7\%, specificity was 94.3\%, precision was 42.9\%, and F1-score was 24.0\%.
 
-These results are summarized in Table~\ref{tab:results_original_dynamic}.
-
-\begin{table}[htbp]
-\centering
-\caption{Original 2D dynamic-level classification outcomes on the 88-dynamic test population.}
-\label{tab:results_original_dynamic}
-\begin{tabular}{lr}
-\hline
-Classification outcome & Number \\
-\hline
-True negatives & 66 \\
-False positives & 4 \\
-False negatives & 15 \\
-True positives & 3 \\
-\hline
-Total dynamics & 88 \\
-\hline
-\end{tabular}
-\end{table}
+The original decision is retained as the baseline column of the consolidated three-policy confusion matrix and metric comparison (Table~\ref{tab:results_failure_aware_policies}).
 
 The original aggregation achieved relatively high specificity but failed to identify most artifact-positive dynamics. Consequently, its overall accuracy substantially exceeded its artifact sensitivity. This difference demonstrates the limitations of evaluating dynamic-level artifact detection using accuracy alone in a population containing considerably more good-quality than artifact-positive acquisitions.
 
@@ -784,7 +762,6 @@ The recorded dynamic-level results therefore characterize retrospective quality 
 
 On the common 88-dynamic test cohort, the original rule achieved 16.7\% Artifact sensitivity and 94.3\% specificity. The balanced failure-aware policy increased sensitivity to 66.7\% while retaining specificity of 94.3\%, detecting nine additional Artifact-labelled dynamics with no additional false-positive decisions. The recall-oriented policy produced the same 66.7\% sensitivity but reduced specificity to 85.7\%, generating six more false positives than the balanced policy.
 
-
 The balanced policy was the strongest of these three recorded operating points under the reported metrics. Nevertheless, ten of its 12 true-positive outcomes were attributed to failed-crop triggers rather than a classifier-score threshold, so the improvement cannot be described as improved standalone EfficientNet-B0 Artifact sensitivity. A failure signal indicates missing anatomical localization, not independently verified visible corruption.
 
 The evaluation involved only four test subjects and an operating-point search with six positive validation dynamics; acquisitions within subjects were not independent biological observations. No subject-clustered interval, independently frozen threshold protocol, or prospective validation was established. False positives may cause unnecessary review or future reacquisition, while false negatives may permit unsuitable acquisitions to pass. Without quantified operational costs and independent validation, the balanced setting is a favorable observed retrospective configuration, not an established clinically optimal policy.
@@ -864,7 +841,6 @@ Artifact F1-score & 72.7\% & 54.5\% \\
 \end{table}
 
 The 3D model's higher recorded Artifact sensitivity was accompanied by five more false-positive decisions. Conversely, the 2D pipeline classified more Good-labelled dynamics correctly but missed six positive dynamics. The total accuracy difference therefore amounted to only one additional correct observation for 3D, despite substantially different sensitivities. The observed 100\% 3D sensitivity must not be interpreted as independently verified generalization because its checkpoint's training exposure to the matched cohort could not be excluded. The 50\% 2D sensitivity is specific to this matched configuration and is not the 66.7\% sensitivity recorded for the balanced policy on the separate 88-dynamic cohort.
-
 
 % Figure reconstructed directly from matched 71-dynamic confusion matrices in Table~\ref{tab:results_matched_pipeline_confusion}.
 \begin{figure}[htbp]
@@ -1069,28 +1045,7 @@ Therefore, the findings support low computational cost for offline successful-sl
 \section{Summary of Experimental Findings}
 \label{sec:results_summary}
 
-This chapter presented experimental results from preliminary volumetric segmentation and handcrafted-feature classification, a developed nnU-Net v2 and 3D ResNet workflow, and the 2D MobileNetV3-U-Net and EfficientNet-B0 pipeline. Segmentation, crop availability, slice classification, dynamic-level decisions, and computational timing were evaluated on distinct populations. Their different prediction units, label definitions, and evaluation independence must be retained when interpreting the findings.
-
-\paragraph{Preliminary 3D experiments.}
-The custom 3D U-Net reached training Dice 0.9656 after 25 epochs, but no independently verified test segmentation performance was established. A small inference inspection identified empty-mask failures. The handcrafted-feature Random Forest experiment used only four feature records with incorrect subject-to-annotation matching, preventing scientifically valid classifier generalization claims.
-
-\paragraph{Developed volumetric pipeline.}
-The recorded 3D ResNet prediction export comprised 600 dynamics (508 Good and 92 Artifact) with 93.5\% classification accuracy, 100.0\% Artifact sensitivity, 92.3\% specificity, and 82.5\% F1-score. These describe agreement in the saved export; independence from model training and selection could not be confirmed. Verified aggregate held-out nnU-Net segmentation overlap metrics were unavailable, and a complete candidate-to-prediction execution log was not recovered.
-
-\paragraph{2D segmentation and crop reliability.}
-The MobileNetV3-U-Net achieved maximum recorded validation Dice 0.8749 and test Dice 0.8620 on 3,168 slices, with test IoU 0.8339, foreground sensitivity 0.9063, and specificity 0.9989. In the restricted 1,529-slice classification test cohort, mean Dice differed by inherited quality label (Good 0.9511; Artifact 0.8081). Of 9,113 selected classifier slices, 8,951 (98.2\%) yielded predicted crops. In the selected test cohort, 30 slices had no valid predicted crop and a further 21 generated crops despite segmentation Dice below 0.5. Technical crop availability was therefore distinct from reliable anatomical localization.
-
-\paragraph{2D slice classification.}
-The complete oracle-crop test cohort of 1,529 slices yielded 79.5\% accuracy, 26.2\% Artifact sensitivity, and ROC-AUC 0.6742. The 1,499 successful predicted-crop inputs yielded 78.7\% accuracy, 23.5\% sensitivity, and ROC-AUC 0.6335. On the matched 1,499-slice subset, oracle and predicted-crop sensitivities were 19.3\% and 23.5\%, with ROC-AUC 0.6440 and 0.6335, respectively. The separately trained crop variants did not show uniform superiority, and classification targets were inherited from dynamic-quality annotations rather than verified visible artifacts in every slice.
-
-\paragraph{Dynamic-level quality decisions.}
-On 88 test dynamics, the original aggregation decision had 78.4\% accuracy, 16.7\% Artifact sensitivity, and 94.3\% specificity. A balanced failure-aware rule achieved 88.6\% accuracy, 66.7\% Artifact sensitivity, 94.3\% specificity, and 70.6\% F1-score. It identified nine more Artifact-labelled dynamics without adding false positives. Ten of its 12 true-positive decisions were attributed to missing-crop triggers, not classifier-score triggers. Its threshold search used only six positive validation dynamics, limiting confidence in stability on new acquisitions.
-
-\paragraph{Matched 3D--2D comparison.}
-The separate 71-dynamic cohort yielded 87.3\% accuracy and 100.0\% Artifact sensitivity for 3D, versus 85.9\% accuracy and 50.0\% sensitivity for 2D; specificities were 84.7\% and 93.2\%, respectively. The recovered methods had different error patterns: 52 dynamics were correctly classified by both, ten only by 3D, and nine only by 2D, with none incorrectly classified by both in that file. The limited four-subject population and unresolved 3D checkpoint exposure prevent a definitive generalization ranking.
-
-\paragraph{Computational feasibility.}
-The recorded 2D successful-slice processing time was 5.239\,ms, with dedicated batch-size-one segmentation inference around 2.75\,ms. Prepared-crop 3D ResNet classification took 5.901\,ms per volume, excluding nnU-Net. Historical full-volume 3D workflows were reported at approximately 15--25 seconds per scan and 17--20 seconds per volume. Differing scopes prevent a verified end-to-end speedup calculation. The sequential 2D demonstration implemented logical first-trigger stopping on reconstructed images but lacked verified early-trigger distributions, measured latency reduction, and prospective scanner integration.
+The principal findings are consolidated in Table~\ref{tab:results_summary_overview}, which reports the appropriate observation unit and major evidential qualification for each experiment. In particular, the preliminary 3D measurements cannot support independent generalization claims, the later 3D export has unresolved training exposure, and the 2D classification and quality-control evaluations used different populations. The balance of sensitivity and specificity is discussed in Section~\ref{sec:discussion_main_findings}.
 
 \begin{table}[htbp]
 \centering

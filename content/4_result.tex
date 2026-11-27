@@ -8,24 +8,8 @@ The experimental evaluation used several populations derived from the available 
 \subsection{Dataset Composition and Quality-Label Distribution}
 \label{subsec:results_annotations}
 
-The source quality-annotation inventory comprised 38 case--sequence records, with 22 dynamic annotation positions per record. The resulting 836 entries were categorized as Good (0), Artifact (1), or Uncertain ($-1$). Table~\ref{tab:results_original_quality_distribution} presents their distribution.
+The source quality-annotation inventory comprised 38 case--sequence records, with 22 dynamic annotation positions per record. The resulting 836 entries were categorized as Good (0), Artifact (1), or Uncertain ($-1$). Table~\ref{tab:original_dynamic_annotation_counts} presents their distribution.
 
-\begin{table}[htbp]
-\centering
-\caption{Original diffusion-dynamic quality annotation inventory. Entries are annotation positions, not independently verified matched MRI--mask observations.}
-\label{tab:results_original_quality_distribution}
-\begin{tabular}{lrr}
-\hline
-Quality category & Entries & Proportion \\
-\hline
-Good (0) & 655 & 78.3\% \\
-Artifact (1) & 115 & 13.8\% \\
-Uncertain ($-1$) & 66 & 7.9\% \\
-\hline
-Total & 836 & 100.0\% \\
-\hline
-\end{tabular}
-\end{table}
 
 Good-quality entries predominated, while Artifact represented a minority of annotations. Exclusion of 66 Uncertain entries left 770 known-label annotation entries potentially eligible for binary artifact-classification targets. This label count does not independently establish the availability of 770 matched MRI volumes and brain masks, since later experiments additionally required usable image files, mask correspondence, and task-specific eligibility.
 
@@ -40,46 +24,14 @@ The preliminary custom 3D U-Net experiment used 770 prepared image--mask entries
 The recovered downstream 3D ResNet classifier dataset contained 600 dynamic-level records from 35 subjects: 508 Good and 92 Artifact. An export of 600 classification predictions was recovered, but the relationship between these observations and executed classifier training and checkpoint selection was not completely established. The export is therefore described as a recovered prediction population rather than an independently verified held-out test set.
 
 \paragraph{Two-dimensional segmentation population.}
-The developed 2D framework used a recorded subject-level allocation of 24 groups: 16 for training, four for validation, and four for testing. The segmentation population included both brain-present and background-only slices. Table~\ref{tab:results_2d_segmentation_splits} summarizes the prepared inventories.
+The developed 2D framework used a recorded subject-level allocation of 24 groups: 16 for training, four for validation, and four for testing. The segmentation population included both brain-present and background-only slices. Table~\ref{tab:method_2d_segmentation_inventory} summarizes the prepared inventories.
 
-\begin{table}[htbp]
-\centering
-\caption{Prepared 2D segmentation populations by reference fetal-brain presence and subject-based partition.}
-\label{tab:results_2d_segmentation_splits}
-\begin{tabular}{lrrr}
-\hline
-Partition & Brain present & Brain absent & Total slices \\
-\hline
-Training & 8,099 & 1,165 & 9,264 \\
-Validation & 2,028 & 1,140 & 3,168 \\
-Test & 1,902 & 1,266 & 3,168 \\
-\hline
-Total & 12,029 & 3,571 & 15,600 \\
-\hline
-\end{tabular}
-\end{table}
 
 The segmentation test population consequently included 3,168 slices from four held-out subjects, comprising 1,902 images with reference fetal-brain foreground and 1,266 images without reference foreground. This distinction is important when interpreting segmentation overlap and empty-mask outcomes.
 
 \paragraph{Two-dimensional artifact-classification population.}
-The classification dataset applied additional brain-content and slice-index selection, resulting in 9,113 selected slices from the 24 subject groups. Table~\ref{tab:2d_classification_splits} gives the recorded class composition and subject allocations.
+The classification dataset applied additional brain-content and slice-index selection, resulting in 9,113 selected slices from the 24 subject groups. Table~\ref{tab:method_2d_classification_inventory} gives the recorded class composition and subject allocations.
 
-\begin{table}[htbp]
-\centering
-\caption{Prepared 2D artifact-classification populations according to subject-based partition and inherited parent-dynamic quality label.}
-\label{tab:2d_classification_splits}
-\begin{tabular}{lrrrr}
-\hline
-Partition & Subjects & Good & Artifact & Total slices \\
-\hline
-Training & 16 & 4,996 & 1,082 & 6,078 \\
-Validation & 4 & 1,405 & 101 & 1,506 \\
-Test & 4 & 1,258 & 271 & 1,529 \\
-\hline
-Total & 24 & 7,659 & 1,454 & 9,113 \\
-\hline
-\end{tabular}
-\end{table}
 
 The proportion of Artifact-labelled slices was approximately 17.8\% in training, 6.7\% in validation, and 17.7\% in testing. These differing prevalences are relevant when interpreting precision, average precision, and other prevalence-sensitive measures. The recovered classification metadata confirmed disjoint subject identifiers across the three partitions, although the original split-generation procedure and complete identifier mapping were not independently verified in every historical record.
 
@@ -338,22 +290,8 @@ Both interfaces accepted complete files already available for processing. Neithe
 \subsection{Processing-Time Evaluation}
 \label{subsec:results_3d_workflow_timing}
 
-Historical development reports identified volumetric segmentation as a major contributor to processing time. The June 2026 supervisor update described approximately 15--25 seconds per scan for an earlier offline volumetric workflow; a September 2026 presentation separately described approximately 17--20 seconds per volume. A different September benchmark reported 5.901 milliseconds per volume for prepared-crop 3D ResNet classification, excluding nnU-Net segmentation and original brain cropping. Table~\ref{tab:3d_workflow_historical_timing} preserves their different measurement scopes.
+Historical development reports identified volumetric segmentation as a major contributor to processing time. The June 2026 supervisor update described approximately 15--25 seconds per scan for an earlier offline volumetric workflow; a September 2026 presentation separately described approximately 17--20 seconds per volume. A different September benchmark reported 5.901 milliseconds per volume for prepared-crop 3D ResNet classification, excluding nnU-Net segmentation and original brain cropping. Table~\ref{tab:results_3d_timing} preserves their different measurement scopes.
 
-\begin{table}[htbp]
-\centering
-\caption{Historical 3D timing reports; measurement scopes and environments are not verified as identical.}
-\label{tab:3d_workflow_historical_timing}
-\begin{tabular}{p{0.35\textwidth}p{0.18\textwidth}p{0.32\textwidth}}
-\hline
-Source & Reported time & Measurement scope \\
-\hline
-June offline workflow & Approx.\ 15--25\,s/scan & Historical volume-processing workflow \\
-September historical workflow & Approx.\ 17--20\,s/volume & Historical full-pipeline report \\
-September 3D ResNet benchmark & 5.901\,ms/volume & Prepared-crop classification; nnU-Net excluded \\
-\hline
-\end{tabular}
-\end{table}
 
 The time difference illustrates why prepared-crop classifier inference cannot represent complete volumetric processing latency. Nevertheless, the historical reports did not establish identical hardware, model versions, input dimensions, or timing boundaries. Their values were not pooled into a final end-to-end estimate. A full event-level distribution would require consistent measurement from file availability through loading, segmentation, crop extraction, classification, and output logging, which was not recovered. Further computational analysis is presented in Section~\ref{sec:results_computational_performance}.
 
@@ -384,7 +322,7 @@ The highest recorded validation Dice of 0.8749 was achieved at epoch 39, with a 
 
 % FIGURE PENDING: H01_segmentation_dice_history.pdf
 % Insert a real figure environment once the source PDF is committed.
-The recorded training and validation trajectories are available in \texttt{H01\_segmentation\_dice\_history.pdf}, pending insertion into the thesis figure directory.
+The original training and validation history figure was not available in the active repository at the time of writing. Only the verified epoch summary values reported above are interpreted here; no unverified training trajectory is reconstructed.
 
 The training and validation loss curves provide complementary evidence of optimization behavior. Although training loss declined substantially during the experiment, the validation loss fluctuated rather than decreasing uniformly. The selected validation Dice maximum provides the principal reference point for interpreting the recorded model-selection outcome.
 
@@ -447,7 +385,7 @@ The lower mean Dice in the artifact-positive group demonstrates greater variabil
 The difference was also evident in predicted-mask availability. Among good-labelled slices, two of 1,258 (0.16\%) failed to produce a usable predicted crop, compared with 28 of 271 (10.33\%) artifact-labelled slices. These outcomes were associated with empty or unusable predicted masks.
 
 % FIGURE PENDING: R01_segmentation_dice_distribution.pdf
-The per-slice Dice distributions are provided in \texttt{R01\_segmentation\_dice\_distribution.pdf}, pending insertion into the thesis figure directory.
+The originally referenced per-slice Dice distribution figure was unavailable in the active repository. The subgroup summary statistics in Table~\ref{tab:2d_segmentation_label_subgroups} are retained without implying the availability of the full plotted distribution.
 
 These subgroup results are based on inherited dynamic-level quality labels. They therefore indicate an association between the parent dynamic's quality category and segmentation reliability, rather than proving that every individual slice in the artifact-positive group visibly contains an artifact.
 
@@ -561,7 +499,36 @@ All 30 failed predicted crops in the test metadata were associated with empty pr
 
 Crop failure was concentrated among slices from artifact-positive dynamics. The exact subgroup counts and rates are reported in Table~\ref{tab:2d_segmentation_label_subgroups}; crop availability was lower in the artifact-positive subgroup.
 
-% FIGURE PENDING: R02 predicted-crop generation outcomes stratified by parent dynamic quality label.
+% Reconstructed directly from 2/1258 and 28/271 unavailable predicted crops in Table~\ref{tab:2d_segmentation_label_subgroups}; not an original experiment-exported plot.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=0.78\textwidth,
+    height=6cm,
+    ymin=0, ymax=12,
+    ylabel={Unavailable predicted crops (\%)},
+    symbolic x coords={Good,Artifact},
+    xtick=data,
+    xlabel={Inherited parent-dynamic quality label},
+    bar width=18pt,
+    nodes near coords,
+    nodes near coords align={vertical},
+    point meta=explicit symbolic,
+    enlarge x limits=0.35,
+    ymajorgrids=true,
+    grid style={dotted},
+]
+\addplot[fill=black!65,draw=black] coordinates {
+    (Good,0.16) [0.16\%]
+    (Artifact,10.33) [10.33\%]
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Unavailable predicted brain crops among selected test slices, stratified by inherited dynamic-quality annotation. Values are reconstructed from the recorded counts: 2 of 1,258 Good-labelled slices and 28 of 271 Artifact-labelled slices. The plot is descriptive and does not establish that each failed slice contains a visible artifact.}
+\label{fig:results_crop_failure_rates_reconstructed}
+\end{figure}
 % Insert only after committing the original, verified image PDF.
 
 The 30 failed test slices originated from two subjects: 22 from \texttt{mibirth013901\_nz} and eight from \texttt{mibirth014701\_nz}. These failures occurred across 12 distinct subject--dynamic combinations. Consequently, the failures were clustered within a limited number of subjects and dynamics, rather than representing 30 independent fetal observations.
@@ -757,8 +724,37 @@ F1-score & 24.0\% & 70.6\% & 60.0\% \\
 \end{tabular}
 \end{table}
 
-% FIGURE PENDING: R08 original/balanced/recall-oriented policy comparison.
-% Include the original 88-dynamic denominator and document the decision thresholds.
+% Reconstructed directly from the 88-dynamic confusion matrices in Table~\ref{tab:results_failure_aware_policies}; not an original experiment-exported plot.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=0.89\textwidth,
+    height=7cm,
+    ymin=0,ymax=105,
+    ylabel={Classification rate (\%)},
+    symbolic x coords={Original,Balanced,Recall-oriented},
+    xtick=data,
+    xlabel={Dynamic-level decision policy},
+    bar width=13pt,
+    enlarge x limits=0.22,
+    legend style={at={(0.5,-0.23)},anchor=north,legend columns=2},
+    ymajorgrids=true,
+    grid style={dotted},
+]
+\addplot[fill=black!70,draw=black] coordinates {
+    (Original,16.7) (Balanced,66.7) (Recall-oriented,66.7)
+};
+\addplot[fill=black!20,draw=black] coordinates {
+    (Original,94.3) (Balanced,94.3) (Recall-oriented,85.7)
+};
+\legend{Artifact sensitivity,Specificity}
+\end{axis}
+\end{tikzpicture}
+\caption{Artifact sensitivity and specificity of the three retrospective quality-decision policies on the same 88-dynamic test set (70 Good, 18 Artifact). Rates are reconstructed from the recorded confusion matrices. The balanced policy used median-score threshold 0.93 and one failed-crop trigger; the recall-oriented policy used a recorded top-five-mean threshold 0.98 and the same trigger. The original decision rule is reproduced as recorded.}
+\label{fig:results_dynamic_policies_reconstructed}
+\end{figure}
 
 Relative to the original decision rule, the balanced configuration identified nine additional artifact-positive dynamics without increasing the total number of false-positive decisions in the recorded test population. This increased artifact sensitivity from 16.7\% to 66.7\% and F1-score from 24.0\% to 70.6\%.
 
@@ -788,20 +784,6 @@ The recorded dynamic-level results therefore characterize retrospective quality 
 
 On the common 88-dynamic test cohort, the original rule achieved 16.7\% Artifact sensitivity and 94.3\% specificity. The balanced failure-aware policy increased sensitivity to 66.7\% while retaining specificity of 94.3\%, detecting nine additional Artifact-labelled dynamics with no additional false-positive decisions. The recall-oriented policy produced the same 66.7\% sensitivity but reduced specificity to 85.7\%, generating six more false positives than the balanced policy.
 
-\begin{table}[htbp]
-\centering
-\caption{Observed Artifact-detection trade-offs on the 88-dynamic test population (70 Good, 18 Artifact).}
-\label{tab:results_dynamic_tradeoffs}
-\begin{tabular}{lrrrr}
-\hline
-Policy & Sensitivity & Specificity & False negatives & False positives \\
-\hline
-Original & 16.7\% & 94.3\% & 15 & 4 \\
-Balanced & 66.7\% & 94.3\% & 6 & 4 \\
-Recall-oriented & 66.7\% & 85.7\% & 6 & 10 \\
-\hline
-\end{tabular}
-\end{table}
 
 The balanced policy was the strongest of these three recorded operating points under the reported metrics. Nevertheless, ten of its 12 true-positive outcomes were attributed to failed-crop triggers rather than a classifier-score threshold, so the improvement cannot be described as improved standalone EfficientNet-B0 Artifact sensitivity. A failure signal indicates missing anatomical localization, not independently verified visible corruption.
 

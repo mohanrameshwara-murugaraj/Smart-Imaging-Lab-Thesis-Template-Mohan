@@ -45,6 +45,7 @@
 \usepackage{svg}
 \usepackage{pgf}
 \usepackage{pgfplots}
+\pgfplotsset{compat=1.18} % Consistent rendering for reconstructed Results figures
 \usepackage{lmodern}
 % Consolidated duplicate package load: \usepackage{amsmath}
 \usepackage{amssymb}
@@ -138,7 +139,7 @@
 % TABLES
 % ##################################################
 % Consolidated duplicate package load: \usepackage{booktabs}   % beautiful table style
-\usepackage{multirow}   % multi row and multi column table functionality
+% Removed redundant package declaration: \usepackage{multirow}   % multi row and multi column table functionality
 \usepackage{pbox}
 
 % simple numbering without chapter
@@ -148,7 +149,7 @@
 % ##################################################
 % SOURCE CODE LISTINGS
 % ##################################################
-\usepackage{listings}
+% Removed redundant package declaration: \usepackage{listings}
 \usepackage{beramono}   % use a typewriter font which supports bold characters
 \usepackage{enumitem}
 

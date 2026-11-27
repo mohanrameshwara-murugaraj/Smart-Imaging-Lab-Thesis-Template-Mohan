@@ -57,3 +57,18 @@
 3. Keep the 86 validation, 88 test, and 71 paired-dynamic populations separate.
 4. Distinguish dynamic-inherited labels from directly observed visible slice artifact ground truth.
 5. Keep retrospective rule improvements separate from demonstrated scanner-time early stopping.
+
+
+## Follow-up duplication cleanup — 2026-11-27
+
+The original duplicated Methods/Results annotation, segmentation-split, classification-split, historical-timing, and separate trade-off tables were already removed in an earlier pass. The follow-up revision confirmed that each now has a single retained detailed table, with appropriate cross-references.
+
+Additional actions:
+- Removed the standalone original dynamic-rule confusion table (previously \`tab:results_original_dynamic\`), since the counts remain in the consolidated policy table \`tab:results_failure_aware_policies\`.
+- Retained separate matched 3D--2D confusion-count and metric tables because one documents observed decisions and the other derived performance, while reducing repetition of the same numbers in prose.
+- Retained the global comparison table and Section 5.10 synthesis table because their scope and function differ from detailed experiment tables. Replaced the seven per-experiment metric retellings in the final Results summary with a concise synthesis and an explicit reference to the overview table.
+- Edited Discussion 6.6 to focus on dynamic decision interpretation, 6.7 on methodological validity and provenance, and 6.8 on acquisition-oriented design implications. Repeated counts, explanations, and forward-looking qualifications were reduced while preserving the original section headings and essential limitations.
+- Chapter 5 now contains **25** table floats and three active reconstructed Results figures.
+- Post-change static validation found **zero unresolved references**, **zero duplicate LaTeX labels**, and **zero unbalanced basic LaTeX environments** in active thesis sources.
+
+**Important:** This replaces the earlier \`26 table floats\` status in the preceding log. It does not resolve absent historical figures, original checkpoint provenance, or full-thesis PDF compile and layout inspection.

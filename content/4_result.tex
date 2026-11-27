@@ -865,6 +865,35 @@ Artifact F1-score & 72.7\% & 54.5\% \\
 
 The 3D model's higher recorded Artifact sensitivity was accompanied by five more false-positive decisions. Conversely, the 2D pipeline classified more Good-labelled dynamics correctly but missed six positive dynamics. The total accuracy difference therefore amounted to only one additional correct observation for 3D, despite substantially different sensitivities. The observed 100\% 3D sensitivity must not be interpreted as independently verified generalization because its checkpoint's training exposure to the matched cohort could not be excluded. The 50\% 2D sensitivity is specific to this matched configuration and is not the 66.7\% sensitivity recorded for the balanced policy on the separate 88-dynamic cohort.
 
+
+% Figure reconstructed directly from matched 71-dynamic confusion matrices in Table~\ref{tab:results_matched_pipeline_confusion}.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    ybar,
+    width=0.88\textwidth,
+    height=7cm,
+    ymin=0,ymax=105,
+    ylabel={Classification rate (\%)},
+    symbolic x coords={3D,2D},
+    xtick=data,
+    xlabel={Recorded matched quality-assessment approach},
+    bar width=18pt,
+    enlarge x limits=0.33,
+    legend style={at={(0.5,-0.23)},anchor=north,legend columns=2},
+    ymajorgrids=true,
+    grid style={dotted},
+]
+\addplot[fill=black!70,draw=black] coordinates {(3D,100.0) (2D,50.0)};
+\addplot[fill=black!20,draw=black] coordinates {(3D,84.7) (2D,93.2)};
+\legend{Artifact sensitivity,Specificity}
+\end{axis}
+\end{tikzpicture}
+\caption{Recorded Artifact sensitivity and specificity of the volumetric ResNet and failure-aware slice-wise system on identical 71-dynamic observations (59 Good, 12 Artifact) from four subjects. Values are reconstructed from the documented confusion matrices. The 3D classifier's independence from model training is not established; these results are exploratory and do not isolate the effect of image dimensionality.}
+\label{fig:results_matched_3d_2d_reconstructed}
+\end{figure}
+
 \subsection{False-Positive and False-Negative Analysis}
 \label{subsec:results_matched_pipeline_errors}
 
